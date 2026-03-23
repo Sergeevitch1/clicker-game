@@ -1,23 +1,29 @@
-// ===== GAME DATA =====
+// ===== GAME STATE =====
 let gameData = {
     balance: 0,
-    energy: 1000,
-    maxEnergy: 1000,
+    totalEarned: 0,
+    energy: 100,
+    maxEnergy: 100,
     clickPower: 1,
     autoClick: 0,
-    totalClicks: 0,
     energyRegen: 1,
-    multiplier: 1,
     jackpotLevel: 0,
     combo: 0,
-    lastComboReset: Date.now(),
+    comboMultiplier: 1.0,
+    lastComboReset: 0,
+    lastClickTime: 0,
+    clickCooldownActive: false,
+    activeEffects: {
+        auto: { active: false, endTime: 0, power: 0 },
+        multi: { active: false, endTime: 0 }
+    },
     upgrades: {
-        click: { level: 1, cost: 50, power: 1 },
-        auto: { level: 0, cost: 200, power: 2, purchased: false },
-        energy: { level: 1, cost: 100, power: 500 },
-        multi: { level: 0, cost: 1000, power: 2 },
-        regen: { level: 1, cost: 300, power: 1 },
-        jackpot: { level: 0, cost: 2000, power: 0.05 }
+        click: { level: 1, cost: 100 },
+        auto: { level: 1, cost: 500 },
+        energy: { level: 1, cost: 200 },
+        multi: { level: 1, cost: 5000 },
+        regen: { level: 1, cost: 1000 },
+        jackpot: { level: 0, cost: 10000 }
     }
 };
 
@@ -29,39 +35,37 @@ function loadFromFirebase() {
         const data = snapshot.val();
         
         if (data) {
-            // 🔥 БЕЗОПАСНОЕ СЛИЯНИЕ С ЗАЩИТОЙ ОТ МИНУСА
+            // Safe merge with validation
             gameData.balance = Math.max(0, Number(data.balance) || 0);
-            gameData.energy = Math.max(0, Number(data.energy) || 1000);
-            gameData.maxEnergy = Math.max(1000, Number(data.maxEnergy) || 1000);
+            gameData.totalEarned = Math.max(0, Number(data.totalEarned) || 0);
+            gameData.energy = Math.max(0, Number(data.energy) || 100);
+            gameData.maxEnergy = Math.max(100, Number(data.maxEnergy) || 100);
             gameData.clickPower = Math.max(1, Number(data.clickPower) || 1);
             gameData.autoClick = Math.max(0, Number(data.autoClick) || 0);
-            gameData.totalClicks = Math.max(0, Number(data.totalClicks) || 0);
             gameData.energyRegen = Math.max(1, Number(data.energyRegen) || 1);
-            gameData.multiplier = Math.max(1, Number(data.multiplier) || 1);
             gameData.jackpotLevel = Math.max(0, Number(data.jackpotLevel) || 0);
             gameData.combo = 0;
-            gameData.lastComboReset = Date.now();
+            gameData.comboMultiplier = 1.0;
+            gameData.lastComboReset = 0;
+            gameData.lastClickTime = 0;
+            gameData.clickCooldownActive = false;
             
-            // Merge upgrades safely
+            // Load active effects
+            if (data.activeEffects) {
+                gameData.activeEffects = { ...gameData.activeEffects, ...data.activeEffects };
+            }
+            
+            // Load upgrades
             if (data.upgrades) {
                 Object.keys(gameData.upgrades).forEach(key => {
                     if (data.upgrades[key]) {
-                        gameData.upgrades[key] = {
-                            ...gameData.upgrades[key],
-                            ...data.upgrades[key]
-                        };
+                        gameData.upgrades[key] = { ...gameData.upgrades[key], ...data.upgrades[key] };
                     }
                 });
             }
             
-            // Check if auto purchased
-            if (gameData.upgrades.auto?.purchased) {
-                const autoBtn = document.getElementById('boostAuto');
-                const autoText = document.getElementById('autoText');
-                if (autoBtn) autoBtn.classList.add('purchased');
-                if (autoText) autoText.textContent = 'КУПЛЕНО';
-                showMulti();
-            }
+            // Restore active effects
+            restoreActiveEffects();
         }
         
         updateUI();
@@ -71,8 +75,8 @@ function loadFromFirebase() {
         console.error('Firebase load error:', err);
         document.getElementById('loading').innerHTML = `
             <div style="color:red;padding:20px;text-align:center">
-                ❌ Ошибка загрузки!<br>
-                <button onclick="location.reload()" style="margin-top:10px;padding:10px 20px;cursor:pointer;background:#8a2be2;color:white;border:none;border-radius:8px">
+                ❌ Ошибка!<br>
+                <button onclick="location.reload()" style="margin-top:10px;padding:10px 20px;cursor:pointer;background:#00d4ff;color:#000;border:none;border-radius:8px;font-weight:bold">
                     Обновить
                 </button>
             </div>
@@ -84,13 +88,15 @@ function loadFromFirebase() {
         const data = snapshot.val();
         if (data) {
             gameData.balance = Math.max(0, Number(data.balance) || 0);
-            gameData.energy = Math.max(0, Number(data.energy) || 1000);
-            gameData.maxEnergy = Math.max(1000, Number(data.maxEnergy) || 1000);
+            gameData.energy = Math.max(0, Number(data.energy) || 100);
+            gameData.maxEnergy = Math.max(100, Number(data.maxEnergy) || 100);
             gameData.clickPower = Math.max(1, Number(data.clickPower) || 1);
             gameData.autoClick = Math.max(0, Number(data.autoClick) || 0);
-            gameData.totalClicks = Math.max(0, Number(data.totalClicks) || 0);
             gameData.energyRegen = Math.max(1, Number(data.energyRegen) || 1);
-            gameData.multiplier = Math.max(1, Number(data.multiplier) || 1);
+            
+            if (data.activeEffects) {
+                gameData.activeEffects = { ...gameData.activeEffects, ...data.activeEffects };
+            }
             
             if (data.upgrades) {
                 Object.keys(gameData.upgrades).forEach(key => {
@@ -108,104 +114,244 @@ function loadFromFirebase() {
 function saveToFirebase() {
     db.ref('users/' + userId).set({
         balance: Math.max(0, gameData.balance),
+        totalEarned: Math.max(0, gameData.totalEarned),
         energy: Math.max(0, gameData.energy),
         maxEnergy: gameData.maxEnergy,
         clickPower: gameData.clickPower,
         autoClick: gameData.autoClick,
-        totalClicks: gameData.totalClicks,
         energyRegen: gameData.energyRegen,
-        multiplier: gameData.multiplier,
         jackpotLevel: gameData.jackpotLevel,
+        activeEffects: gameData.activeEffects,
         upgrades: gameData.upgrades
     }).catch(console.error);
 }
 
 function updateBalance(amount) {
-    const final = Math.floor(amount * gameData.multiplier);
-    const newBalance = gameData.balance + final;
-    gameData.balance = Math.max(0, newBalance); // 🔥 ЗАЩИТА ОТ МИНУСА
+    const final = Math.floor(amount * getActiveMultiplier());
+    gameData.balance += final;
+    gameData.totalEarned += final;
+    gameData.balance = Math.max(0, gameData.balance);
+    
+    // Update max energy based on balance
+    const newMaxEnergy = GAME_CONFIG.ENERGY_BASE + Math.floor(gameData.balance / GAME_CONFIG.ENERGY_PER_BALANCE) + 
+                         (gameData.upgrades.energy.level - 1) * GAME_CONFIG.POWER_GROWTH.energy;
+    gameData.maxEnergy = Math.max(100, newMaxEnergy);
+    
     db.ref('users/' + userId + '/balance').set(gameData.balance);
+    db.ref('users/' + userId + '/totalEarned').set(gameData.totalEarned);
+    db.ref('users/' + userId + '/maxEnergy').set(gameData.maxEnergy);
+    
     return final;
+}
+
+function getActiveMultiplier() {
+    let mult = gameData.comboMultiplier;
+    if (gameData.activeEffects.multi.active && Date.now() < gameData.activeEffects.multi.endTime) {
+        mult *= GAME_CONFIG.MULTI_VALUE;
+    }
+    return mult;
+}
+
+// ===== ACTIVE EFFECTS =====
+function restoreActiveEffects() {
+    const now = Date.now();
+    
+    // Auto click
+    if (gameData.activeEffects.auto.active && now < gameData.activeEffects.auto.endTime) {
+        gameData.autoClick = gameData.activeEffects.auto.power;
+        startAutoTimer();
+    } else {
+        gameData.activeEffects.auto.active = false;
+        gameData.autoClick = 0;
+    }
+    
+    // Multiplier
+    if (gameData.activeEffects.multi.active && now < gameData.activeEffects.multi.endTime) {
+        startMultiTimer();
+    } else {
+        gameData.activeEffects.multi.active = false;
+    }
+}
+
+function startAutoTimer() {
+    const timer = setInterval(() => {
+        const remaining = gameData.activeEffects.auto.endTime - Date.now();
+        
+        if (remaining <= 0) {
+            clearInterval(timer);
+            gameData.activeEffects.auto.active = false;
+            gameData.autoClick = 0;
+            saveToFirebase();
+            showNotification('⏰ Авто-клик истёк!');
+        }
+        
+        updateAutoTimerUI(remaining);
+    }, 100);
+}
+
+function startMultiTimer() {
+    const timer = setInterval(() => {
+        const remaining = gameData.activeEffects.multi.endTime - Date.now();
+        
+        if (remaining <= 0) {
+            clearInterval(timer);
+            gameData.activeEffects.multi.active = false;
+            saveToFirebase();
+            showNotification('⏰ Мульти x2 истёк!');
+        }
+        
+        updateMultiTimerUI(remaining);
+    }, 100);
+}
+
+function updateAutoTimerUI(ms) {
+    const seconds = Math.ceil(ms / 1000);
+    const bar = document.getElementById('autoTimer');
+    const text = document.getElementById('autoText');
+    
+    if (bar && text) {
+        const percent = (ms / GAME_CONFIG.AUTO_DURATION) * 100;
+        bar.style.width = percent + '%';
+        text.textContent = seconds + ' сек';
+    }
+}
+
+function updateMultiTimerUI(ms) {
+    const minutes = Math.ceil(ms / 60000);
+    const seconds = Math.ceil((ms % 60000) / 1000);
+    const bar = document.getElementById('multiTimer');
+    const text = document.getElementById('multiText');
+    
+    if (bar && text) {
+        const percent = (ms / GAME_CONFIG.MULTI_DURATION) * 100;
+        bar.style.width = percent + '%';
+        text.textContent = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+    }
 }
 
 // ===== COMBO SYSTEM =====
 function updateCombo() {
     const now = Date.now();
-    if (now - gameData.lastComboReset > 3000) {
+    
+    if (now - gameData.lastComboReset > GAME_CONFIG.COMBO_DURATION) {
         gameData.combo = 0;
+        gameData.comboMultiplier = 1.0;
     }
+    
     gameData.lastComboReset = now;
-    gameData.combo = Math.min(gameData.combo + 1, 50);
+    gameData.combo = Math.min(gameData.combo + 1, 100);
     
-    const mult = 1 + (gameData.combo * 0.1);
-    document.getElementById('comboValue').textContent = mult.toFixed(1);
-    document.getElementById('comboFill').style.width = Math.min((gameData.combo * 2), 100) + '%';
+    // Calculate multiplier (max 2.0)
+    gameData.comboMultiplier = Math.min(1.0 + (gameData.combo * GAME_CONFIG.COMBO_INCREMENT), GAME_CONFIG.COMBO_MAX_MULTIPLIER);
     
-    if (gameData.combo > 5) {
-        document.getElementById('comboText').classList.add('active');
-        document.getElementById('clickButton').classList.add('combo');
-        setTimeout(() => {
-            document.getElementById('clickButton').classList.remove('combo');
-            document.getElementById('comboText').classList.remove('active');
-        }, 300);
+    // Update UI
+    const comboText = document.getElementById('comboText');
+    const comboValue = document.getElementById('comboValue');
+    const comboFill = document.getElementById('comboFill');
+    const comboTimer = document.getElementById('comboTimer');
+    
+    if (comboText && comboValue && comboFill) {
+        comboValue.textContent = gameData.comboMultiplier.toFixed(1);
+        comboFill.style.width = Math.min((gameData.comboMultiplier - 1) / (GAME_CONFIG.COMBO_MAX_MULTIPLIER - 1) * 100, 100) + '%';
+        
+        if (gameData.combo > 5) {
+            comboText.classList.add('active');
+            document.getElementById('clickButton').classList.add('combo');
+            setTimeout(() => {
+                document.getElementById('clickButton').classList.remove('combo');
+            }, 300);
+        }
     }
-}
-
-function showMulti() {
-    document.getElementById('boostMulti').style.display = 'block';
+    
+    if (comboTimer) {
+        const timeLeft = Math.max(0, GAME_CONFIG.COMBO_DURATION - (now - gameData.lastComboReset));
+        comboTimer.textContent = (timeLeft / 1000).toFixed(1) + ' сек';
+    }
 }
 
 // ===== UPGRADES =====
 function buyUpgrade(type) {
     const upg = gameData.upgrades[type];
+    const config = GAME_CONFIG.PRICES[type];
     
-    // 🔥 ПРОВЕРКА: хватает ли денег
     if (!upg || gameData.balance < upg.cost) {
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-        showNotification('❌ Недостаточно монет!');
+        showNotification('❌ Недостаточно $!', 'error');
         return;
     }
     
-    // 🔥 СПИСЫВАЕМ монеты ПЕРЕД покупкой
-    gameData.balance -= upg.cost;
-    upg.level++;
-    upg.cost = Math.floor(upg.cost * 1.3);
+    // Check cooldown for click power
+    if (type === 'click' && gameData.clickCooldownActive) {
+        showNotification('⏳ Подожди 5 сек!', 'error');
+        return;
+    }
     
-    if (type === 'click') { 
-        gameData.clickPower += upg.power; 
-        showNotification(`⚡ +${upg.power} к клику!`); 
-    }
-    else if (type === 'auto') {
-        if (!upg.purchased) {
-            gameData.autoClick += upg.power;
-            upg.purchased = true;
-            const autoBtn = document.getElementById('boostAuto');
-            const autoText = document.getElementById('autoText');
-            if (autoBtn) autoBtn.classList.add('purchased');
-            if (autoText) autoText.textContent = 'КУПЛЕНО';
-            showNotification('🤖 Авто-клик ВКЛ!');
-            showMulti();
-        } else {
-            gameData.autoClick += upg.power;
-            showNotification(`🤖 +${upg.power}/сек!`);
+    // Deduct money FIRST
+    gameData.balance -= upg.cost;
+    
+    if (type === 'click') {
+        // Start cooldown
+        gameData.clickCooldownActive = true;
+        upg.level++;
+        upg.cost = Math.floor(upg.cost * GAME_CONFIG.PRICE_GROWTH.click);
+        gameData.clickPower += GAME_CONFIG.POWER_GROWTH.click;
+        
+        // Visual cooldown
+        const cooldownBar = document.getElementById('clickCooldown');
+        if (cooldownBar) {
+            cooldownBar.classList.add('active');
+            setTimeout(() => {
+                cooldownBar.classList.remove('active');
+                gameData.clickCooldownActive = false;
+            }, GAME_CONFIG.CLICK_COOLDOWN);
         }
-    }
-    else if (type === 'energy') { 
-        gameData.maxEnergy += upg.power; 
-        gameData.energy = gameData.maxEnergy; 
-        showNotification(`🔋 +${upg.power} энергии!`); 
-    }
-    else if (type === 'multi') { 
-        gameData.multiplier += 1; 
-        showNotification(`💎 МУЛЬТИ x${gameData.multiplier}!`); 
-    }
-    else if (type === 'regen') { 
-        gameData.energyRegen += upg.power; 
-        showNotification(`⚡ Реген +${upg.power}/сек!`); 
-    }
-    else if (type === 'jackpot') { 
-        gameData.jackpotLevel++; 
-        showNotification('🎰 Джекпот улучшен!'); 
+        
+        showNotification(`⚡ +1$ за клик!`);
+        
+    } else if (type === 'auto') {
+        // Temporary auto-click (1 minute)
+        const now = Date.now();
+        gameData.activeEffects.auto.active = true;
+        gameData.activeEffects.auto.endTime = now + GAME_CONFIG.AUTO_DURATION;
+        gameData.activeEffects.auto.power = gameData.autoClick + GAME_CONFIG.POWER_GROWTH.auto * upg.level;
+        gameData.autoClick = gameData.activeEffects.auto.power;
+        
+        upg.level++;
+        upg.cost = Math.floor(upg.cost * GAME_CONFIG.PRICE_GROWTH.auto);
+        
+        startAutoTimer();
+        showNotification(`🤖 Авто-клик на 1 мин!`);
+        
+    } else if (type === 'energy') {
+        upg.level++;
+        upg.cost = Math.floor(upg.cost * GAME_CONFIG.PRICE_GROWTH.energy);
+        gameData.maxEnergy += GAME_CONFIG.POWER_GROWTH.energy;
+        gameData.energy = gameData.maxEnergy;
+        showNotification(`🔋 +100 макс энергии!`);
+        
+    } else if (type === 'multi') {
+        // Temporary multiplier (5 minutes)
+        const now = Date.now();
+        gameData.activeEffects.multi.active = true;
+        gameData.activeEffects.multi.endTime = now + GAME_CONFIG.MULTI_DURATION;
+        
+        upg.level++;
+        upg.cost = Math.floor(upg.cost * GAME_CONFIG.PRICE_GROWTH.multi);
+        
+        startMultiTimer();
+        showNotification(`💎 МУЛЬТИ x2 на 5 мин!`);
+        
+    } else if (type === 'regen') {
+        upg.level++;
+        upg.cost = Math.floor(upg.cost * GAME_CONFIG.PRICE_GROWTH.regen);
+        gameData.energyRegen += GAME_CONFIG.POWER_GROWTH.regen;
+        showNotification(`⚡ Реген +1/сек!`);
+        
+    } else if (type === 'jackpot') {
+        upg.level++;
+        upg.cost = Math.floor(upg.cost * GAME_CONFIG.PRICE_GROWTH.jackpot);
+        gameData.jackpotLevel = upg.level;
+        showNotification(`🎰 Шанс джекпота увеличен!`);
     }
     
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -213,83 +359,111 @@ function buyUpgrade(type) {
     saveToFirebase();
 }
 
-function showNotification(text) {
+function showNotification(text, type = '') {
     const n = document.getElementById('notification');
     n.textContent = text;
-    n.classList.add('show');
+    n.className = 'notification show ' + type;
     setTimeout(() => n.classList.remove('show'), 2000);
 }
 
 // ===== UI UPDATE =====
 function updateUI() {
-    document.getElementById('balance').textContent = Math.floor(gameData.balance).toLocaleString();
+    // Balance
+    document.getElementById('balance').textContent = '$' + Math.floor(gameData.balance).toLocaleString();
+    
+    // Energy
     document.getElementById('energyText').textContent = `${Math.floor(gameData.energy)} / ${gameData.maxEnergy}`;
     document.getElementById('energyFill').style.width = `${(gameData.energy / gameData.maxEnergy) * 100}%`;
-    document.getElementById('perClick').textContent = (gameData.clickPower * gameData.multiplier).toLocaleString();
-    document.getElementById('perSecond').textContent = (gameData.autoClick * gameData.multiplier).toLocaleString();
-    document.getElementById('totalClicks').textContent = gameData.totalClicks.toLocaleString();
+    document.getElementById('energyRegen').textContent = `+${gameData.energyRegen}/сек`;
     
-    ['click','energy','regen','jackpot'].forEach(t => {
-        const c = document.getElementById(`cost${t.charAt(0).toUpperCase()+t.slice(1)}`);
-        const l = document.getElementById(`level${t.charAt(0).toUpperCase()+t.slice(1)}`);
-        if (c && gameData.upgrades[t]?.cost) c.textContent = gameData.upgrades[t].cost.toLocaleString();
+    // Stats
+    const mult = getActiveMultiplier();
+    document.getElementById('perClick').textContent = '$' + (gameData.clickPower * mult).toLocaleString();
+    document.getElementById('perSecond').textContent = '$' + (gameData.autoClick * mult).toLocaleString();
+    document.getElementById('totalEarned').textContent = '$' + Math.floor(gameData.totalEarned).toLocaleString();
+    
+    // Upgrades
+    ['click', 'energy', 'regen', 'jackpot'].forEach(t => {
+        const c = document.getElementById(`cost${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        const l = document.getElementById(`level${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        if (c && gameData.upgrades[t]?.cost) c.textContent = '$' + gameData.upgrades[t].cost.toLocaleString();
         if (l && gameData.upgrades[t]?.level) l.textContent = gameData.upgrades[t].level;
     });
-    if (gameData.upgrades.multi?.cost) document.getElementById('costMulti').textContent = gameData.upgrades.multi.cost.toLocaleString();
-    if (gameData.upgrades.multi?.level) document.getElementById('levelMulti').textContent = gameData.upgrades.multi.level;
+    
+    // Auto & Multi
+    if (gameData.upgrades.auto?.cost) document.getElementById('costAuto').textContent = '$' + gameData.upgrades.auto.cost.toLocaleString();
+    if (gameData.upgrades.multi?.cost) document.getElementById('costMulti').textContent = '$' + gameData.upgrades.multi.cost.toLocaleString();
+    
+    // Bonuses
+    document.getElementById('clickBonus').textContent = `+${GAME_CONFIG.POWER_GROWTH.click}$ за клик`;
+    document.getElementById('autoBonus').textContent = `+${GAME_CONFIG.POWER_GROWTH.auto * gameData.upgrades.auto.level}$/сек`;
+    document.getElementById('energyBonus').textContent = `+${GAME_CONFIG.POWER_GROWTH.energy} макс`;
+    document.getElementById('regenBonus').textContent = `+${GAME_CONFIG.POWER_GROWTH.regen}/сек`;
+    document.getElementById('jackpotBonus').textContent = `${(GAME_CONFIG.JACKPOT_BASE_CHANCE + gameData.jackpotLevel * GAME_CONFIG.JACKPOT_CHANCE_PER_LEVEL) * 100}% шанс x10`;
     
     checkShop();
 }
 
 function checkShop() {
-    ['click','auto','energy','multi','regen','jackpot'].forEach(t => {
-        const item = document.getElementById(`boost${t.charAt(0).toUpperCase()+t.slice(1)}`);
+    ['click', 'auto', 'energy', 'multi', 'regen', 'jackpot'].forEach(t => {
+        const item = document.getElementById(`boost${t.charAt(0).toUpperCase() + t.slice(1)}`);
         const upg = gameData.upgrades[t];
-        if (item && upg && !upg.purchased) {
+        if (item && upg) {
             item.classList.toggle('disabled', gameData.balance < upg.cost);
+            if (t === 'click' && gameData.clickCooldownActive) {
+                item.classList.add('on-cooldown');
+            } else {
+                item.classList.remove('on-cooldown');
+            }
         }
     });
 }
 
 // ===== CLICK HANDLER =====
 document.getElementById('clickButton').addEventListener('click', function(e) {
-    const energyCost = Math.min(gameData.clickPower, gameData.energy);
+    const energyCost = 1;
     
-    if (energyCost > 0) {
-        // 🔥 ТРАТИМ ЭНЕРГИЮ
+    if (gameData.energy >= energyCost) {
+        // Spend energy
         gameData.energy -= energyCost;
         db.ref('users/' + userId + '/energy').set(Math.max(0, gameData.energy));
         
+        // Update combo
         updateCombo();
-        const comboMult = 1 + (gameData.combo * 0.1);
-        let amount = gameData.clickPower * comboMult;
         
-        // JACKPOT
-        if (gameData.jackpotLevel > 0 && Math.random() < gameData.jackpotLevel * 0.05) {
-            amount *= 10;
-            showNotification('🎰 ДЖЕКПОТ x10!');
+        // Calculate earnings
+        let amount = gameData.clickPower * gameData.comboMultiplier;
+        
+        // Jackpot check
+        const jackpotChance = GAME_CONFIG.JACKPOT_BASE_CHANCE + (gameData.jackpotLevel * GAME_CONFIG.JACKPOT_CHANCE_PER_LEVEL);
+        if (Math.random() < jackpotChance) {
+            amount *= GAME_CONFIG.JACKPOT_MULTIPLIER;
+            showNotification('🎰 ДЖЕКПОТ x10!', 'jackpot');
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
         
         const earned = updateBalance(amount);
-        gameData.totalClicks++;
-        db.ref('users/' + userId + '/totalClicks').set(gameData.totalClicks);
         
+        // Visual effects
         const rect = this.getBoundingClientRect();
-        const x = e.clientX || (rect.left + rect.width/2);
-        const y = e.clientY || (rect.top + rect.height/2);
-        showFloat(x, y, `+${earned}`);
+        const x = e.clientX || (rect.left + rect.width / 2);
+        const y = e.clientY || (rect.top + rect.height / 2);
+        showFloat(x, y, `+$${earned}`, jackpotChance > 0 && Math.random() < jackpotChance);
         
-        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+        if (tg.HapticFeedback && !jackpotChance) {
+            tg.HapticFeedback.impactOccurred('light');
+        }
+        
         updateUI();
     } else {
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
-        showNotification('⚡ Нет энергии!');
+        showNotification('⚡ Нет энергии!', 'error');
     }
 });
 
-function showFloat(x, y, text) {
+function showFloat(x, y, text, isJackpot = false) {
     const el = document.createElement('div');
-    el.className = 'float-number';
+    el.className = 'float-number' + (isJackpot ? ' jackpot' : '');
     el.textContent = text;
     el.style.left = x + 'px';
     el.style.top = y + 'px';
@@ -298,21 +472,38 @@ function showFloat(x, y, text) {
 }
 
 // ===== AUTO CLICK =====
-setInterval(() => { 
-    if (gameData.autoClick > 0) { 
+setInterval(() => {
+    if (gameData.autoClick > 0) {
         updateBalance(gameData.autoClick);
         updateUI();
-    } 
+    }
 }, 1000);
 
 // ===== ENERGY REGEN =====
-setInterval(() => { 
-    if (gameData.energy < gameData.maxEnergy) { 
+setInterval(() => {
+    if (gameData.energy < gameData.maxEnergy) {
         gameData.energy = Math.min(gameData.energy + gameData.energyRegen, gameData.maxEnergy);
         db.ref('users/' + userId + '/energy').set(gameData.energy);
         updateUI();
-    } 
+    }
 }, 1000);
+
+// ===== COMBO TIMER UPDATE =====
+setInterval(() => {
+    if (gameData.combo > 0) {
+        const comboTimer = document.getElementById('comboTimer');
+        if (comboTimer) {
+            const timeLeft = Math.max(0, GAME_CONFIG.COMBO_DURATION - (Date.now() - gameData.lastComboReset));
+            comboTimer.textContent = (timeLeft / 1000).toFixed(1) + ' сек';
+            
+            if (timeLeft <= 0) {
+                gameData.combo = 0;
+                gameData.comboMultiplier = 1.0;
+                document.getElementById('comboText').classList.remove('active');
+            }
+        }
+    }
+}, 100);
 
 // ===== START =====
 loadFromFirebase();
