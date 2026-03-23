@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Crypto Clicker</title>
+    <title>🔥 Crypto Clicker PRO</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
@@ -18,26 +17,79 @@
         }
 
         body {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
             color: white;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
-            overflow: hidden;
+            padding: 15px;
+            overflow-x: hidden;
         }
 
-        .balance-container {
-            margin-top: 20px;
+        /* COMBO METER */
+        .combo-container {
+            width: 100%;
+            max-width: 320px;
+            margin: 10px 0;
             text-align: center;
         }
 
-        .balance {
-            font-size: 42px;
+        .combo-text {
+            font-size: 18px;
             font-weight: bold;
-            text-shadow: 0 0 20px rgba(138, 43, 226, 0.5);
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            margin-bottom: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .combo-text.active {
+            opacity: 1;
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .combo-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .combo-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffd700, #ffed4e);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        /* BALANCE */
+        .balance-container {
+            margin: 10px 0;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(138, 43, 226, 0.3);
+        }
+
+        .balance {
+            font-size: 48px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #00d4ff, #8a2be2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(138, 43, 226, 0.5);
         }
 
         .balance-label {
@@ -46,23 +98,25 @@
             margin-top: 5px;
         }
 
+        /* CLICKER BUTTON */
         .clicker-area {
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
             width: 100%;
+            position: relative;
         }
 
         .main-button {
-            width: 280px;
-            height: 280px;
+            width: 260px;
+            height: 260px;
             border-radius: 50%;
             background: linear-gradient(145deg, #2a2a4a, #1a1a2e);
-            border: 8px solid #4a4a8a;
+            border: 10px solid #4a4a8a;
             box-shadow: 
-                0 0 30px rgba(138, 43, 226, 0.4),
-                inset 0 0 20px rgba(138, 43, 226, 0.2);
+                0 0 40px rgba(138, 43, 226, 0.6),
+                inset 0 0 30px rgba(138, 43, 226, 0.3);
             cursor: pointer;
             transition: all 0.1s ease;
             position: relative;
@@ -70,44 +124,54 @@
         }
 
         .main-button::before {
-            content: '';
+            content: '⚡';
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            background: linear-gradient(145deg, #6a6aaa, #4a4a8a);
-            opacity: 0.3;
+            font-size: 100px;
+            opacity: 0.5;
         }
 
         .main-button:active {
-            transform: scale(0.95);
+            transform: scale(0.92);
             box-shadow: 
-                0 0 15px rgba(138, 43, 226, 0.6),
-                inset 0 0 30px rgba(138, 43, 226, 0.3);
+                0 0 20px rgba(138, 43, 226, 0.8),
+                inset 0 0 40px rgba(138, 43, 226, 0.5);
         }
 
+        .main-button.combo {
+            animation: comboShake 0.3s ease;
+        }
+
+        @keyframes comboShake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            75% { transform: rotate(5deg); }
+        }
+
+        /* FLOATING NUMBERS */
         .float-number {
             position: absolute;
-            font-size: 28px;
+            font-size: 32px;
             font-weight: bold;
             color: #fff;
             pointer-events: none;
             animation: floatUp 1s ease-out forwards;
-            text-shadow: 0 0 10px rgba(138, 43, 226, 0.8);
+            text-shadow: 0 0 20px rgba(138, 43, 226, 1);
+            z-index: 100;
         }
 
         @keyframes floatUp {
             0% { opacity: 1; transform: translateY(0) scale(1); }
-            100% { opacity: 0; transform: translateY(-100px) scale(1.5); }
+            100% { opacity: 0; transform: translateY(-150px) scale(1.5); }
         }
 
+        /* ENERGY */
         .energy-container {
             width: 100%;
             max-width: 320px;
-            margin-bottom: 20px;
+            margin: 10px 0;
         }
 
         .energy-info {
@@ -119,23 +183,72 @@
 
         .energy-bar {
             width: 100%;
-            height: 12px;
+            height: 16px;
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
+            border-radius: 8px;
             overflow: hidden;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
         }
 
         .energy-fill {
             height: 100%;
-            background: linear-gradient(90deg, #00d4ff, #8a2be2);
-            border-radius: 6px;
+            background: linear-gradient(90deg, #00d4ff, #8a2be2, #ff00ff);
+            border-radius: 8px;
             transition: width 0.3s ease;
-            box-shadow: 0 0 10px rgba(138, 43, 226, 0.5);
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.6);
+            position: relative;
         }
 
-        .shop {
+        .energy-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* STATS */
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin: 10px 0;
             width: 100%;
             max-width: 320px;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid rgba(138, 43, 226, 0.3);
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 3px;
+        }
+
+        /* SHOP */
+        .shop {
+            width: 100%;
+            max-width: 340px;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 10px;
@@ -144,12 +257,29 @@
 
         .shop-item {
             background: linear-gradient(145deg, #2a2a4a, #1a1a2e);
-            border: 1px solid rgba(138, 43, 226, 0.3);
-            border-radius: 12px;
-            padding: 15px 10px;
+            border: 2px solid rgba(138, 43, 226, 0.4);
+            border-radius: 15px;
+            padding: 12px 8px;
             text-align: center;
             cursor: pointer;
             transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shop-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .shop-item:hover::before {
+            left: 100%;
         }
 
         .shop-item:active {
@@ -157,58 +287,71 @@
         }
 
         .shop-item.disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
         }
 
+        .shop-item.purchased {
+            border-color: #00ff88;
+            background: linear-gradient(145deg, #1a3a2a, #0f2a1a);
+        }
+
         .shop-icon {
-            font-size: 24px;
+            font-size: 32px;
             margin-bottom: 8px;
         }
 
         .shop-name {
-            font-size: 12px;
+            font-size: 11px;
             margin-bottom: 5px;
-            opacity: 0.8;
+            opacity: 0.9;
+            font-weight: bold;
         }
 
         .shop-cost {
             font-size: 14px;
             font-weight: bold;
             color: #00d4ff;
+            margin: 5px 0;
         }
 
         .shop-level {
             font-size: 10px;
             opacity: 0.6;
-            margin-top: 5px;
         }
 
+        .shop-bonus {
+            font-size: 9px;
+            color: #00ff88;
+            margin-top: 3px;
+        }
+
+        /* LOADING */
         .loading {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
             flex-direction: column;
+            z-index: 1000;
         }
 
         .loading-text {
             color: white;
-            font-size: 20px;
+            font-size: 18px;
             margin-top: 20px;
         }
 
         .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(138, 43, 226, 0.3);
-            border-top: 5px solid #8a2be2;
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(138, 43, 226, 0.3);
+            border-top: 6px solid #8a2be2;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -217,27 +360,73 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* NOTIFICATIONS */
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: linear-gradient(135deg, #8a2be2, #00d4ff);
+            padding: 15px 25px;
+            border-radius: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            box-shadow: 0 5px 20px rgba(138, 43, 226, 0.5);
+        }
+
+        .notification.show {
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
 </head>
 <body>
-    <!-- Загрузка -->
+    <!-- Loading -->
     <div class="loading" id="loading">
         <div class="spinner"></div>
-        <div class="loading-text">🔄 Загрузка...</div>
+        <div class="loading-text">🔥 Загрузка...</div>
     </div>
 
-    <!-- Баланс -->
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+
+    <!-- Combo -->
+    <div class="combo-container">
+        <div class="combo-text" id="comboText">🔥 COMBO x<span id="comboValue">1</span></div>
+        <div class="combo-bar">
+            <div class="combo-fill" id="comboFill" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- Balance -->
     <div class="balance-container">
         <div class="balance" id="balance">0</div>
-        <div class="balance-label">монет</div>
+        <div class="balance-label">💰 МОНЕТ</div>
     </div>
 
-    <!-- Кнопка -->
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat-box">
+            <div class="stat-value" id="perClick">1</div>
+            <div class="stat-label">за клик</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" id="perSecond">0</div>
+            <div class="stat-label">в секунду</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" id="totalClicks">0</div>
+            <div class="stat-label">кликов</div>
+        </div>
+    </div>
+
+    <!-- Clicker -->
     <div class="clicker-area">
         <div class="main-button" id="clickButton"></div>
     </div>
 
-    <!-- Энергия -->
+    <!-- Energy -->
     <div class="energy-container">
         <div class="energy-info">
             <span>⚡ Энергия</span>
@@ -248,25 +437,49 @@
         </div>
     </div>
 
-    <!-- Магазин -->
+    <!-- Shop -->
     <div class="shop">
         <div class="shop-item" id="boostClick" onclick="buyUpgrade('click')">
             <div class="shop-icon">⚡</div>
-            <div class="shop-name">Сила</div>
+            <div class="shop-name">Сила клика</div>
             <div class="shop-cost" id="costClick">100</div>
             <div class="shop-level">Ур. <span id="levelClick">1</span></div>
+            <div class="shop-bonus">+1 за клик</div>
         </div>
         <div class="shop-item" id="boostAuto" onclick="buyUpgrade('auto')">
-            <div class="shop-icon">🔄</div>
-            <div class="shop-name">Авто</div>
+            <div class="shop-icon">🤖</div>
+            <div class="shop-name">Авто-клик</div>
             <div class="shop-cost" id="costAuto">500</div>
-            <div class="shop-level">Ур. <span id="levelAuto">0</span></div>
+            <div class="shop-level" id="autoText">Ур. 0</div>
+            <div class="shop-bonus">+5/сек</div>
         </div>
         <div class="shop-item" id="boostEnergy" onclick="buyUpgrade('energy')">
             <div class="shop-icon">🔋</div>
             <div class="shop-name">Энергия</div>
             <div class="shop-cost" id="costEnergy">200</div>
             <div class="shop-level">Ур. <span id="levelEnergy">1</span></div>
+            <div class="shop-bonus">+500 макс</div>
+        </div>
+        <div class="shop-item" id="boostMulti" onclick="buyUpgrade('multi')" style="display:none;">
+            <div class="shop-icon">💎</div>
+            <div class="shop-name">Мульти x2</div>
+            <div class="shop-cost" id="costMulti">2000</div>
+            <div class="shop-level">Ур. <span id="levelMulti">0</span></div>
+            <div class="shop-bonus">x2 всё</div>
+        </div>
+        <div class="shop-item" id="boostRegen" onclick="buyUpgrade('regen')">
+            <div class="shop-icon">⚡</div>
+            <div class="shop-name">Реген</div>
+            <div class="shop-cost" id="costRegen">1000</div>
+            <div class="shop-level">Ур. <span id="levelRegen">1</span></div>
+            <div class="shop-bonus">+2/сек</div>
+        </div>
+        <div class="shop-item" id="boostJackpot" onclick="buyUpgrade('jackpot')">
+            <div class="shop-icon">🎰</div>
+            <div class="shop-name">Джекпот</div>
+            <div class="shop-cost" id="costJackpot">5000</div>
+            <div class="shop-level">Ур. <span id="levelJackpot">0</span></div>
+            <div class="shop-bonus">Шанс x10</div>
         </div>
     </div>
 
@@ -284,38 +497,49 @@
         };
         // ===========================
 
-        // Инициализация Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
-        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Получаем user_id из Telegram
         const userId = tg.initDataUnsafe?.user?.id || 'guest';
 
-        // Игровые данные
+        // ===== GAME DATA =====
         let gameData = {
             balance: 0,
             energy: 500,
             maxEnergy: 500,
             clickPower: 1,
             autoClick: 0,
+            totalClicks: 0,
+            energyRegen: 1,
+            multiplier: 1,
+            jackpotLevel: 0,
+            combo: 0,
+            comboTime: 0,
+            lastComboReset: Date.now(),
             upgrades: {
                 click: { level: 1, cost: 100, power: 1 },
-                auto: { level: 0, cost: 500, power: 5 },
-                energy: { level: 1, cost: 200, power: 500 }
+                auto: { level: 0, cost: 500, power: 5, purchased: false },
+                energy: { level: 1, cost: 200, power: 500 },
+                multi: { level: 0, cost: 2000, power: 2 },
+                regen: { level: 1, cost: 1000, power: 2 },
+                jackpot: { level: 0, cost: 5000, power: 0.05 }
             }
         };
 
-        // ===== СИНХРОНИЗАЦИЯ С FIREBASE =====
+        // ===== FIREBASE SYNC =====
         function loadFromFirebase() {
             const userRef = db.ref('users/' + userId);
             userRef.once('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
                     gameData = { ...gameData, ...data };
+                    if (gameData.upgrades.auto.purchased) {
+                        document.getElementById('boostAuto').classList.add('purchased');
+                        document.getElementById('autoText').textContent = 'КУПЛЕНО';
+                        showMulti();
+                    }
                 } else {
                     saveToFirebase();
                 }
@@ -338,48 +562,155 @@
         }
 
         function updateBalance(amount) {
+            const finalAmount = Math.floor(amount * gameData.multiplier);
             const userRef = db.ref('users/' + userId + '/balance');
-            userRef.transaction(current => (current || 0) + amount);
+            userRef.transaction(current => (current || 0) + finalAmount);
+            return finalAmount;
         }
 
-        // ===== UI ФУНКЦИИ =====
+        // ===== COMBO SYSTEM =====
+        function updateCombo() {
+            const now = Date.now();
+            if (now - gameData.lastComboReset > 3000) {
+                gameData.combo = 0;
+            }
+            gameData.lastComboReset = now;
+            gameData.combo = Math.min(gameData.combo + 1, 50);
+            
+            const comboMultiplier = 1 + (gameData.combo * 0.1);
+            document.getElementById('comboValue').textContent = comboMultiplier.toFixed(1);
+            document.getElementById('comboFill').style.width = (gameData.combo * 2) + '%';
+            
+            if (gameData.combo > 5) {
+                document.getElementById('comboText').classList.add('active');
+                document.getElementById('clickButton').classList.add('combo');
+                setTimeout(() => {
+                    document.getElementById('clickButton').classList.remove('combo');
+                }, 300);
+            }
+        }
+
+        // ===== UPGRADES =====
+        function showMulti() {
+            document.getElementById('boostMulti').style.display = 'block';
+        }
+
+        function buyUpgrade(type) {
+            const upgrade = gameData.upgrades[type];
+            if (gameData.balance >= upgrade.cost) {
+                updateBalance(-upgrade.cost);
+                upgrade.level++;
+                upgrade.cost = Math.floor(upgrade.cost * 1.5);
+
+                if (type === 'click') {
+                    gameData.clickPower += upgrade.power;
+                    showNotification(`⚡ Сила: +${upgrade.power}!`);
+                } else if (type === 'auto') {
+                    if (!upgrade.purchased) {
+                        gameData.autoClick += upgrade.power;
+                        upgrade.purchased = true;
+                        document.getElementById('boostAuto').classList.add('purchased');
+                        document.getElementById('autoText').textContent = 'КУПЛЕНО';
+                        showNotification('🤖 Авто-клик АКТИВИРОВАН!');
+                        showMulti();
+                    }
+                } else if (type === 'energy') {
+                    gameData.maxEnergy += upgrade.power;
+                    gameData.energy = gameData.maxEnergy;
+                    showNotification(`🔋 Энергия: +${upgrade.power}!`);
+                } else if (type === 'multi') {
+                    gameData.multiplier += 1;
+                    showNotification(`💎 МУЛЬТИ x${gameData.multiplier}!`);
+                } else if (type === 'regen') {
+                    gameData.energyRegen += upgrade.power;
+                    showNotification(`⚡ Реген: +${upgrade.power}/сек!`);
+                } else if (type === 'jackpot') {
+                    gameData.jackpotLevel++;
+                    showNotification('🎰 Джекпот улучшен!');
+                }
+
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+
+                updateUI();
+                saveToFirebase();
+            } else {
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('error');
+                }
+                showNotification('❌ Недостаточно монет!');
+            }
+        }
+
+        function showNotification(text) {
+            const notif = document.getElementById('notification');
+            notif.textContent = text;
+            notif.classList.add('show');
+            setTimeout(() => notif.classList.remove('show'), 2000);
+        }
+
+        // ===== UI UPDATE =====
         function updateUI() {
             document.getElementById('balance').textContent = gameData.balance.toLocaleString();
             document.getElementById('energyText').textContent = `${Math.floor(gameData.energy)} / ${gameData.maxEnergy}`;
             document.getElementById('energyFill').style.width = `${(gameData.energy / gameData.maxEnergy) * 100}%`;
+            
+            document.getElementById('perClick').textContent = (gameData.clickPower * gameData.multiplier).toLocaleString();
+            document.getElementById('perSecond').textContent = (gameData.autoClick * gameData.multiplier).toLocaleString();
+            document.getElementById('totalClicks').textContent = gameData.totalClicks.toLocaleString();
 
-            document.getElementById('costClick').textContent = gameData.upgrades.click.cost;
-            document.getElementById('levelClick').textContent = gameData.upgrades.click.level;
-            document.getElementById('costAuto').textContent = gameData.upgrades.auto.cost;
-            document.getElementById('levelAuto').textContent = gameData.upgrades.auto.level;
-            document.getElementById('costEnergy').textContent = gameData.upgrades.energy.cost;
-            document.getElementById('levelEnergy').textContent = gameData.upgrades.energy.level;
+            ['click', 'energy', 'regen', 'jackpot'].forEach(type => {
+                const el = document.getElementById(`cost${type.charAt(0).toUpperCase() + type.slice(1)}`);
+                const lvl = document.getElementById(`level${type.charAt(0).toUpperCase() + type.slice(1)}`);
+                if (el) el.textContent = gameData.upgrades[type].cost.toLocaleString();
+                if (lvl) lvl.textContent = gameData.upgrades[type].level;
+            });
+
+            document.getElementById('costMulti').textContent = gameData.upgrades.multi.cost.toLocaleString();
+            document.getElementById('levelMulti').textContent = gameData.upgrades.multi.level;
 
             checkShopAvailability();
         }
 
         function checkShopAvailability() {
-            ['click', 'auto', 'energy'].forEach(type => {
+            ['click', 'auto', 'energy', 'multi', 'regen', 'jackpot'].forEach(type => {
                 const item = document.getElementById(`boost${type.charAt(0).toUpperCase() + type.slice(1)}`);
-                if (gameData.balance >= gameData.upgrades[type].cost) {
-                    item.classList.remove('disabled');
-                } else {
-                    item.classList.add('disabled');
+                if (item && !gameData.upgrades[type].purchased) {
+                    if (gameData.balance >= gameData.upgrades[type].cost) {
+                        item.classList.remove('disabled');
+                    } else {
+                        item.classList.add('disabled');
+                    }
                 }
             });
         }
 
-        // ===== КЛИК =====
+        // ===== CLICK HANDLER =====
         document.getElementById('clickButton').addEventListener('click', function(e) {
             if (gameData.energy >= gameData.clickPower) {
+                // ТРАТИМ ЭНЕРГИЮ!
+                gameData.energy -= gameData.clickPower;
+                
+                // COMBO
+                updateCombo();
+                const comboMult = 1 + (gameData.combo * 0.1);
+                
+                // JACKPOT CHANCE
+                let finalAmount = gameData.clickPower * comboMult;
+                if (gameData.jackpotLevel > 0 && Math.random() < gameData.jackpotLevel * 0.05) {
+                    finalAmount *= 10;
+                    showNotification('🎰 ДЖЕКПОТ x10!');
+                }
+                
+                const earned = updateBalance(finalAmount);
+                gameData.totalClicks++;
+
                 const rect = this.getBoundingClientRect();
                 const x = e.clientX || (rect.left + rect.width / 2);
                 const y = e.clientY || (rect.top + rect.height / 2);
 
-                gameData.energy -= gameData.clickPower;
-                updateBalance(gameData.clickPower);
-
-                showFloatNumber(x, y, `+${gameData.clickPower}`);
+                showFloatNumber(x, y, `+${earned}`);
 
                 if (tg.HapticFeedback) {
                     tg.HapticFeedback.impactOccurred('medium');
@@ -387,6 +718,11 @@
 
                 updateUI();
                 saveToFirebase();
+            } else {
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('warning');
+                }
+                showNotification('⚡ Нет энергии!');
             }
         });
 
@@ -400,49 +736,23 @@
             setTimeout(() => floatEl.remove(), 1000);
         }
 
-        // ===== МАГАЗИН =====
-        function buyUpgrade(type) {
-            const upgrade = gameData.upgrades[type];
-            if (gameData.balance >= upgrade.cost) {
-                updateBalance(-upgrade.cost);
-                upgrade.level++;
-                upgrade.cost = Math.floor(upgrade.cost * 1.5);
-
-                if (type === 'click') {
-                    gameData.clickPower++;
-                } else if (type === 'auto') {
-                    gameData.autoClick += upgrade.power;
-                } else if (type === 'energy') {
-                    gameData.maxEnergy += upgrade.power;
-                    gameData.energy = gameData.maxEnergy;
-                }
-
-                if (tg.HapticFeedback) {
-                    tg.HapticFeedback.notificationOccurred('success');
-                }
-
-                updateUI();
-                saveToFirebase();
-            }
-        }
-
-        // ===== АВТО-КЛИК =====
+        // ===== AUTO CLICK =====
         setInterval(() => {
             if (gameData.autoClick > 0) {
-                updateBalance(gameData.autoClick);
+                const earned = updateBalance(gameData.autoClick);
                 updateUI();
             }
         }, 1000);
 
-        // ===== ЭНЕРГИЯ =====
+        // ===== ENERGY REGEN =====
         setInterval(() => {
             if (gameData.energy < gameData.maxEnergy) {
-                gameData.energy = Math.min(gameData.energy + 1, gameData.maxEnergy);
+                gameData.energy = Math.min(gameData.energy + gameData.energyRegen, gameData.maxEnergy);
                 updateUI();
             }
         }, 1000);
 
-        // ===== ЗАПУСК =====
+        // ===== START =====
         loadFromFirebase();
     </script>
 </body>
