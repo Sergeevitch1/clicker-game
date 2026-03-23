@@ -11,8 +11,8 @@ let gameData = {
     combo: 0,
     comboMultiplier: 1.0,
     lastComboReset: 0,
-    lastClickTime: 0,
     clickCooldownActive: false,
+    clickCooldownEnd: 0,
     activeEffects: {
         auto: { active: false, endTime: 0, power: 0 },
         multi: { active: false, endTime: 0 }
@@ -35,7 +35,6 @@ function loadFromFirebase() {
         const data = snapshot.val();
         
         if (data) {
-            // Safe merge with validation
             gameData.balance = Math.max(0, Number(data.balance) || 0);
             gameData.totalEarned = Math.max(0, Number(data.totalEarned) || 0);
             gameData.energy = Math.max(0, Number(data.energy) || 100);
@@ -47,15 +46,13 @@ function loadFromFirebase() {
             gameData.combo = 0;
             gameData.comboMultiplier = 1.0;
             gameData.lastComboReset = 0;
-            gameData.lastClickTime = 0;
             gameData.clickCooldownActive = false;
+            gameData.clickCooldownEnd = 0;
             
-            // Load active effects
             if (data.activeEffects) {
                 gameData.activeEffects = { ...gameData.activeEffects, ...data.activeEffects };
             }
             
-            // Load upgrades
             if (data.upgrades) {
                 Object.keys(gameData.upgrades).forEach(key => {
                     if (data.upgrades[key]) {
@@ -64,7 +61,6 @@ function loadFromFirebase() {
                 });
             }
             
-            // Restore active effects
             restoreActiveEffects();
         }
         
@@ -72,18 +68,10 @@ function loadFromFirebase() {
         document.getElementById('loading').style.display = 'none';
         
     }).catch((err) => {
-        console.error('Firebase load error:', err);
-        document.getElementById('loading').innerHTML = `
-            <div style="color:red;padding:20px;text-align:center">
-                ❌ Ошибка!<br>
-                <button onclick="location.reload()" style="margin-top:10px;padding:10px 20px;cursor:pointer;background:#00d4ff;color:#000;border:none;border-radius:8px;font-weight:bold">
-                    Обновить
-                </button>
-            </div>
-        `;
+        console.error('Firebase error:', err);
+        showNotification('❌ Ошибка загрузки!', 'error');
     });
 
-    // Real-time listener
     userRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -132,15 +120,16 @@ function updateBalance(amount) {
     gameData.totalEarned += final;
     gameData.balance = Math.max(0, gameData.balance);
     
-    // Update max energy based on balance
-    const newMaxEnergy = GAME_CONFIG.ENERGY_BASE + Math.floor(gameData.balance / GAME_CONFIG.ENERGY_PER_BALANCE) + 
-                         (gameData.upgrades.energy.level - 1) * GAME_CONFIG.POWER_GROWTH.energy;
+    const newMaxEnergy = GAME_CONFIG.ENERGY_BASE + 
+                         Math.floor(gameData.balance / GAME_CONFIG.ENERGY_PER_BALANCE) + 
+                         (gameData.upgrades.energy.level - 1) * GAME_CONFIG.ENERGY_PER_UPGRADE;
     gameData.maxEnergy = Math.max(100, newMaxEnergy);
     
     db.ref('users/' + userId + '/balance').set(gameData.balance);
     db.ref('users/' + userId + '/totalEarned').set(gameData.totalEarned);
     db.ref('users/' + userId + '/maxEnergy').set(gameData.maxEnergy);
     
+    showBalanceChange(final);
     return final;
 }
 
@@ -152,11 +141,19 @@ function getActiveMultiplier() {
     return mult;
 }
 
+function showBalanceChange(amount) {
+    const changeEl = document.getElementById('balanceChange');
+    if (changeEl) {
+        changeEl.textContent = `+$${amount.toLocaleString()}`;
+        changeEl.classList.add('show');
+        setTimeout(() => changeEl.classList.remove('show'), 1000);
+    }
+}
+
 // ===== ACTIVE EFFECTS =====
 function restoreActiveEffects() {
     const now = Date.now();
     
-    // Auto click
     if (gameData.activeEffects.auto.active && now < gameData.activeEffects.auto.endTime) {
         gameData.autoClick = gameData.activeEffects.auto.power;
         startAutoTimer();
@@ -165,7 +162,6 @@ function restoreActiveEffects() {
         gameData.autoClick = 0;
     }
     
-    // Multiplier
     if (gameData.activeEffects.multi.active && now < gameData.activeEffects.multi.endTime) {
         startMultiTimer();
     } else {
@@ -174,58 +170,75 @@ function restoreActiveEffects() {
 }
 
 function startAutoTimer() {
-    const timer = setInterval(() => {
+    const updateTimer = () => {
         const remaining = gameData.activeEffects.auto.endTime - Date.now();
         
         if (remaining <= 0) {
-            clearInterval(timer);
             gameData.activeEffects.auto.active = false;
             gameData.autoClick = 0;
             saveToFirebase();
-            showNotification('⏰ Авто-клик истёк!');
+            showNotification('⏰ Авто-клик истёк!', 'error');
+            updateUI();
+            return;
         }
         
         updateAutoTimerUI(remaining);
-    }, 100);
+        requestAnimationFrame(updateTimer);
+    };
+    requestAnimationFrame(updateTimer);
 }
 
 function startMultiTimer() {
-    const timer = setInterval(() => {
+    const updateTimer = () => {
         const remaining = gameData.activeEffects.multi.endTime - Date.now();
         
         if (remaining <= 0) {
-            clearInterval(timer);
             gameData.activeEffects.multi.active = false;
             saveToFirebase();
-            showNotification('⏰ Мульти x2 истёк!');
+            showNotification('⏰ Мульти x2 истёк!', 'error');
+            updateUI();
+            return;
         }
         
         updateMultiTimerUI(remaining);
-    }, 100);
+        requestAnimationFrame(updateTimer);
+    };
+    requestAnimationFrame(updateTimer);
 }
 
 function updateAutoTimerUI(ms) {
-    const seconds = Math.ceil(ms / 1000);
-    const bar = document.getElementById('autoTimer');
-    const text = document.getElementById('autoText');
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const text = document.getElementById('autoTimer');
+    const progress = document.getElementById('autoProgress');
     
-    if (bar && text) {
+    if (text) {
+        text.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    if (progress) {
         const percent = (ms / GAME_CONFIG.AUTO_DURATION) * 100;
-        bar.style.width = percent + '%';
-        text.textContent = seconds + ' сек';
+        progress.style.width = percent + '%';
+        progress.classList.add('active');
     }
 }
 
 function updateMultiTimerUI(ms) {
-    const minutes = Math.ceil(ms / 60000);
-    const seconds = Math.ceil((ms % 60000) / 1000);
-    const bar = document.getElementById('multiTimer');
-    const text = document.getElementById('multiText');
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const text = document.getElementById('multiTimer');
+    const progress = document.getElementById('multiProgress');
     
-    if (bar && text) {
+    if (text) {
+        text.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    if (progress) {
         const percent = (ms / GAME_CONFIG.MULTI_DURATION) * 100;
-        bar.style.width = percent + '%';
-        text.textContent = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+        progress.style.width = percent + '%';
+        progress.classList.add('active');
     }
 }
 
@@ -240,27 +253,25 @@ function updateCombo() {
     
     gameData.lastComboReset = now;
     gameData.combo = Math.min(gameData.combo + 1, 100);
-    
-    // Calculate multiplier (max 2.0)
     gameData.comboMultiplier = Math.min(1.0 + (gameData.combo * GAME_CONFIG.COMBO_INCREMENT), GAME_CONFIG.COMBO_MAX_MULTIPLIER);
     
-    // Update UI
     const comboText = document.getElementById('comboText');
     const comboValue = document.getElementById('comboValue');
     const comboFill = document.getElementById('comboFill');
     const comboTimer = document.getElementById('comboTimer');
     
-    if (comboText && comboValue && comboFill) {
-        comboValue.textContent = gameData.comboMultiplier.toFixed(1);
-        comboFill.style.width = Math.min((gameData.comboMultiplier - 1) / (GAME_CONFIG.COMBO_MAX_MULTIPLIER - 1) * 100, 100) + '%';
-        
-        if (gameData.combo > 5) {
-            comboText.classList.add('active');
-            document.getElementById('clickButton').classList.add('combo');
-            setTimeout(() => {
-                document.getElementById('clickButton').classList.remove('combo');
-            }, 300);
-        }
+    if (comboValue) comboValue.textContent = gameData.comboMultiplier.toFixed(1);
+    if (comboFill) {
+        const percent = ((gameData.comboMultiplier - 1) / (GAME_CONFIG.COMBO_MAX_MULTIPLIER - 1)) * 100;
+        comboFill.style.width = Math.min(percent, 100) + '%';
+    }
+    
+    if (gameData.combo > 5 && comboText) {
+        comboText.classList.add('active');
+        document.getElementById('clickButton').classList.add('combo');
+        setTimeout(() => {
+            document.getElementById('clickButton').classList.remove('combo');
+        }, 300);
     }
     
     if (comboTimer) {
@@ -272,7 +283,6 @@ function updateCombo() {
 // ===== UPGRADES =====
 function buyUpgrade(type) {
     const upg = gameData.upgrades[type];
-    const config = GAME_CONFIG.PRICES[type];
     
     if (!upg || gameData.balance < upg.cost) {
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
@@ -280,40 +290,36 @@ function buyUpgrade(type) {
         return;
     }
     
-    // Check cooldown for click power
     if (type === 'click' && gameData.clickCooldownActive) {
         showNotification('⏳ Подожди 5 сек!', 'error');
         return;
     }
     
-    // Deduct money FIRST
     gameData.balance -= upg.cost;
     
     if (type === 'click') {
-        // Start cooldown
         gameData.clickCooldownActive = true;
+        gameData.clickCooldownEnd = Date.now() + GAME_CONFIG.CLICK_COOLDOWN;
         upg.level++;
         upg.cost = Math.floor(upg.cost * GAME_CONFIG.PRICE_GROWTH.click);
         gameData.clickPower += GAME_CONFIG.POWER_GROWTH.click;
         
-        // Visual cooldown
-        const cooldownBar = document.getElementById('clickCooldown');
-        if (cooldownBar) {
-            cooldownBar.classList.add('active');
+        const cooldownText = document.getElementById('clickCooldownText');
+        if (cooldownText) {
+            cooldownText.textContent = '⏳ 5 сек...';
             setTimeout(() => {
-                cooldownBar.classList.remove('active');
+                cooldownText.textContent = '';
                 gameData.clickCooldownActive = false;
             }, GAME_CONFIG.CLICK_COOLDOWN);
         }
         
-        showNotification(`⚡ +1$ за клик!`);
+        showNotification(`⚡ +${GAME_CONFIG.POWER_GROWTH.click}$ за клик!`);
         
     } else if (type === 'auto') {
-        // Temporary auto-click (1 minute)
         const now = Date.now();
         gameData.activeEffects.auto.active = true;
         gameData.activeEffects.auto.endTime = now + GAME_CONFIG.AUTO_DURATION;
-        gameData.activeEffects.auto.power = gameData.autoClick + GAME_CONFIG.POWER_GROWTH.auto * upg.level;
+        gameData.activeEffects.auto.power = gameData.autoClick + (GAME_CONFIG.POWER_GROWTH.auto * upg.level);
         gameData.autoClick = gameData.activeEffects.auto.power;
         
         upg.level++;
@@ -325,12 +331,11 @@ function buyUpgrade(type) {
     } else if (type === 'energy') {
         upg.level++;
         upg.cost = Math.floor(upg.cost * GAME_CONFIG.PRICE_GROWTH.energy);
-        gameData.maxEnergy += GAME_CONFIG.POWER_GROWTH.energy;
-        gameData.energy = gameData.maxEnergy;
-        showNotification(`🔋 +100 макс энергии!`);
+        gameData.energy += GAME_CONFIG.ENERGY_PER_UPGRADE; // 🔥 ДОБАВЛЯЕТСЯ, НЕ ЗАПОЛНЯЕТ!
+        gameData.maxEnergy += GAME_CONFIG.ENERGY_PER_UPGRADE;
+        showNotification(`🔋 +${GAME_CONFIG.ENERGY_PER_UPGRADE} энергии!`);
         
     } else if (type === 'multi') {
-        // Temporary multiplier (5 minutes)
         const now = Date.now();
         gameData.activeEffects.multi.active = true;
         gameData.activeEffects.multi.endTime = now + GAME_CONFIG.MULTI_DURATION;
@@ -345,7 +350,7 @@ function buyUpgrade(type) {
         upg.level++;
         upg.cost = Math.floor(upg.cost * GAME_CONFIG.PRICE_GROWTH.regen);
         gameData.energyRegen += GAME_CONFIG.POWER_GROWTH.regen;
-        showNotification(`⚡ Реген +1/сек!`);
+        showNotification(`⚡ Реген +${GAME_CONFIG.POWER_GROWTH.regen}/сек!`);
         
     } else if (type === 'jackpot') {
         upg.level++;
@@ -363,43 +368,96 @@ function showNotification(text, type = '') {
     const n = document.getElementById('notification');
     n.textContent = text;
     n.className = 'notification show ' + type;
-    setTimeout(() => n.classList.remove('show'), 2000);
+    setTimeout(() => n.classList.remove('show'), 2500);
 }
+
+function showJackpotCelebration(amount) {
+    const celebration = document.getElementById('jackpotCelebration');
+    const amountEl = document.getElementById('jackpotAmount');
+    
+    if (celebration && amountEl) {
+        amountEl.textContent = `+$${amount.toLocaleString()}`;
+        celebration.classList.add('show');
+        
+        // Create particles
+        for (let i = 0; i < 20; i++) {
+            createParticle();
+        }
+        
+        setTimeout(() => {
+            celebration.classList.remove('show');
+        }, 2000);
+    }
+}
+
+function createParticle() {
+    const particle = document.createElement('div');
+    particle.style.cssText = `
+        position: fixed;
+        width: 10px;
+        height: 10px;
+        background: ${['#ffd700', '#ffed4e', '#ffaa00', '#00d4ff', '#00ff88'][Math.floor(Math.random() * 5)]};
+        border-radius: 50%;
+        left: ${Math.random() * 100}vw;
+        top: ${Math.random() * 100}vh;
+        pointer-events: none;
+        z-index: 3000;
+        animation: particleFly 2s ease-out forwards;
+    `;
+    document.body.appendChild(particle);
+    setTimeout(() => particle.remove(), 2000);
+}
+
+// Add particle animation to CSS dynamically
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes particleFly {
+        0% {
+            transform: translate(0, 0) scale(1);
+            opacity: 1;
+        }
+        100% {
+            transform: translate(${Math.random() * 400 - 200}px, ${Math.random() * 400 - 200}px) scale(0);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
 
 // ===== UI UPDATE =====
 function updateUI() {
-    // Balance
     document.getElementById('balance').textContent = '$' + Math.floor(gameData.balance).toLocaleString();
     
-    // Energy
     document.getElementById('energyText').textContent = `${Math.floor(gameData.energy)} / ${gameData.maxEnergy}`;
-    document.getElementById('energyFill').style.width = `${(gameData.energy / gameData.maxEnergy) * 100}%`;
+    const energyPercent = (gameData.energy / gameData.maxEnergy) * 100;
+    document.getElementById('energyFill').style.width = energyPercent + '%';
     document.getElementById('energyRegen').textContent = `+${gameData.energyRegen}/сек`;
     
-    // Stats
     const mult = getActiveMultiplier();
     document.getElementById('perClick').textContent = '$' + (gameData.clickPower * mult).toLocaleString();
     document.getElementById('perSecond').textContent = '$' + (gameData.autoClick * mult).toLocaleString();
     document.getElementById('totalEarned').textContent = '$' + Math.floor(gameData.totalEarned).toLocaleString();
     
-    // Upgrades
     ['click', 'energy', 'regen', 'jackpot'].forEach(t => {
         const c = document.getElementById(`cost${t.charAt(0).toUpperCase() + t.slice(1)}`);
         const l = document.getElementById(`level${t.charAt(0).toUpperCase() + t.slice(1)}`);
         if (c && gameData.upgrades[t]?.cost) c.textContent = '$' + gameData.upgrades[t].cost.toLocaleString();
-        if (l && gameData.upgrades[t]?.level) l.textContent = gameData.upgrades[t].level;
+        if (l && gameData.upgrades[t]?.level !== undefined) l.textContent = gameData.upgrades[t].level;
     });
     
-    // Auto & Multi
-    if (gameData.upgrades.auto?.cost) document.getElementById('costAuto').textContent = '$' + gameData.upgrades.auto.cost.toLocaleString();
-    if (gameData.upgrades.multi?.cost) document.getElementById('costMulti').textContent = '$' + gameData.upgrades.multi.cost.toLocaleString();
+    if (gameData.upgrades.auto?.cost) {
+        document.getElementById('costAuto').textContent = '$' + gameData.upgrades.auto.cost.toLocaleString();
+    }
+    if (gameData.upgrades.multi?.cost) {
+        document.getElementById('costMulti').textContent = '$' + gameData.upgrades.multi.cost.toLocaleString();
+    }
     
-    // Bonuses
     document.getElementById('clickBonus').textContent = `+${GAME_CONFIG.POWER_GROWTH.click}$ за клик`;
     document.getElementById('autoBonus').textContent = `+${GAME_CONFIG.POWER_GROWTH.auto * gameData.upgrades.auto.level}$/сек`;
-    document.getElementById('energyBonus').textContent = `+${GAME_CONFIG.POWER_GROWTH.energy} макс`;
     document.getElementById('regenBonus').textContent = `+${GAME_CONFIG.POWER_GROWTH.regen}/сек`;
-    document.getElementById('jackpotBonus').textContent = `${(GAME_CONFIG.JACKPOT_BASE_CHANCE + gameData.jackpotLevel * GAME_CONFIG.JACKPOT_CHANCE_PER_LEVEL) * 100}% шанс x10`;
+    
+    const jackpotChance = (GAME_CONFIG.JACKPOT_BASE_CHANCE + gameData.jackpotLevel * GAME_CONFIG.JACKPOT_CHANCE_PER_LEVEL) * 100;
+    document.getElementById('jackpotBonus').textContent = `${jackpotChance.toFixed(0)}% шанс x10`;
     
     checkShop();
 }
@@ -424,35 +482,31 @@ document.getElementById('clickButton').addEventListener('click', function(e) {
     const energyCost = 1;
     
     if (gameData.energy >= energyCost) {
-        // Spend energy
         gameData.energy -= energyCost;
         db.ref('users/' + userId + '/energy').set(Math.max(0, gameData.energy));
         
-        // Update combo
         updateCombo();
         
-        // Calculate earnings
         let amount = gameData.clickPower * gameData.comboMultiplier;
         
-        // Jackpot check
         const jackpotChance = GAME_CONFIG.JACKPOT_BASE_CHANCE + (gameData.jackpotLevel * GAME_CONFIG.JACKPOT_CHANCE_PER_LEVEL);
-        if (Math.random() < jackpotChance) {
+        const isJackpot = Math.random() < jackpotChance;
+        
+        if (isJackpot) {
             amount *= GAME_CONFIG.JACKPOT_MULTIPLIER;
-            showNotification('🎰 ДЖЕКПОТ x10!', 'jackpot');
+            const earned = updateBalance(amount);
+            showJackpotCelebration(earned);
+            showNotification(`🎰 ДЖЕКПОТ! +$${earned.toLocaleString()}!`, 'jackpot');
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        } else {
+            const earned = updateBalance(amount);
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
         
-        const earned = updateBalance(amount);
-        
-        // Visual effects
         const rect = this.getBoundingClientRect();
         const x = e.clientX || (rect.left + rect.width / 2);
         const y = e.clientY || (rect.top + rect.height / 2);
-        showFloat(x, y, `+$${earned}`, jackpotChance > 0 && Math.random() < jackpotChance);
-        
-        if (tg.HapticFeedback && !jackpotChance) {
-            tg.HapticFeedback.impactOccurred('light');
-        }
+        showFloat(x, y, isJackpot);
         
         updateUI();
     } else {
@@ -461,17 +515,17 @@ document.getElementById('clickButton').addEventListener('click', function(e) {
     }
 });
 
-function showFloat(x, y, text, isJackpot = false) {
+function showFloat(x, y, isJackpot) {
     const el = document.createElement('div');
     el.className = 'float-number' + (isJackpot ? ' jackpot' : '');
-    el.textContent = text;
+    el.textContent = isJackpot ? '🎰 x10!' : '+$';
     el.style.left = x + 'px';
     el.style.top = y + 'px';
     document.body.appendChild(el);
-    setTimeout(() => el.remove(), 1000);
+    setTimeout(() => el.remove(), 1500);
 }
 
-// ===== AUTO CLICK =====
+// ===== LOOPS =====
 setInterval(() => {
     if (gameData.autoClick > 0) {
         updateBalance(gameData.autoClick);
@@ -479,7 +533,6 @@ setInterval(() => {
     }
 }, 1000);
 
-// ===== ENERGY REGEN =====
 setInterval(() => {
     if (gameData.energy < gameData.maxEnergy) {
         gameData.energy = Math.min(gameData.energy + gameData.energyRegen, gameData.maxEnergy);
@@ -488,22 +541,36 @@ setInterval(() => {
     }
 }, 1000);
 
-// ===== COMBO TIMER UPDATE =====
 setInterval(() => {
     if (gameData.combo > 0) {
+        const timeLeft = Math.max(0, GAME_CONFIG.COMBO_DURATION - (Date.now() - gameData.lastComboReset));
         const comboTimer = document.getElementById('comboTimer');
         if (comboTimer) {
-            const timeLeft = Math.max(0, GAME_CONFIG.COMBO_DURATION - (Date.now() - gameData.lastComboReset));
             comboTimer.textContent = (timeLeft / 1000).toFixed(1) + ' сек';
-            
-            if (timeLeft <= 0) {
-                gameData.combo = 0;
-                gameData.comboMultiplier = 1.0;
-                document.getElementById('comboText').classList.remove('active');
-            }
+        }
+        
+        if (timeLeft <= 0) {
+            gameData.combo = 0;
+            gameData.comboMultiplier = 1.0;
+            document.getElementById('comboText')?.classList.remove('active');
         }
     }
 }, 100);
 
 // ===== START =====
 loadFromFirebase();
+
+// Add CSS for progress bars
+const progressStyle = document.createElement('style');
+progressStyle.textContent = `
+    #autoProgress.active, #multiProgress.active {
+        animation: progressAnimation linear forwards;
+    }
+    #autoProgress.active::after {
+        animation-duration: ${GAME_CONFIG.AUTO_DURATION}ms;
+    }
+    #multiProgress.active::after {
+        animation-duration: ${GAME_CONFIG.MULTI_DURATION}ms;
+    }
+`;
+document.head.appendChild(progressStyle);
