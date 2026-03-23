@@ -27,30 +27,31 @@ const GAME_CONFIG = {
     // Combo
     COMBO_DURATION: 10000, // 10 seconds
     COMBO_MAX_MULTIPLIER: 2.0,
-    COMBO_INCREMENT: 0.05, // +0.05 per click
+    COMBO_INCREMENT: 0.05,
     
     // Click Power Cooldown
     CLICK_COOLDOWN: 5000, // 5 seconds
     
-    // Auto Click (temporary)
+    // Auto Click (1 minute)
     AUTO_DURATION: 60000, // 1 minute
-    AUTO_BASE_POWER: 5,
+    AUTO_BASE_POWER: 10,
     
-    // Multiplier x2 (temporary)
+    // Multiplier x2 (5 minutes)
     MULTI_DURATION: 300000, // 5 minutes
     MULTI_VALUE: 2,
     
     // Energy
     ENERGY_BASE: 100,
-    ENERGY_PER_BALANCE: 100, // 1 energy per $100
+    ENERGY_PER_BALANCE: 1000, // 1 energy per $1000
     ENERGY_REGEN_BASE: 1,
+    ENERGY_PER_UPGRADE: 100,
     
     // Jackpot
     JACKPOT_MULTIPLIER: 10,
-    JACKPOT_BASE_CHANCE: 0.05, // 5%
-    JACKPOT_CHANCE_PER_LEVEL: 0.05, // +5% per level
+    JACKPOT_BASE_CHANCE: 0.05,
+    JACKPOT_CHANCE_PER_LEVEL: 0.05,
     
-    // Prices (base)
+    // Prices
     PRICES: {
         click: 100,
         auto: 500,
@@ -60,21 +61,21 @@ const GAME_CONFIG = {
         jackpot: 10000
     },
     
-    // Price multipliers
+    // Price growth (МЕНЬШЕ = легче)
     PRICE_GROWTH: {
-        click: 2.5,
-        auto: 2.0,
-        energy: 2.5,
-        multi: 3.0,
-        regen: 3.0,
-        jackpot: 3.0
+        click: 2.0,
+        auto: 1.8,
+        energy: 2.0,
+        multi: 2.5,
+        regen: 2.5,
+        jackpot: 2.5
     },
     
     // Power growth
     POWER_GROWTH: {
-        click: 1,
-        auto: 5,
-        energy: 100,
-        regen: 1
+        click: 5,      // +5$ за клик
+        auto: 10,      // +10$/сек
+        energy: 100,   // +100 энергии
+        regen: 2       // +2/сек реген
     }
 };
