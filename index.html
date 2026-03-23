@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crypto Clicker</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* Запрет выделения текста */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* Счетчик монет */
+        .balance-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .balance {
+            font-size: 42px;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(138, 43, 226, 0.5);
+        }
+
+        .balance-label {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        /* Главная кнопка */
+        .clicker-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .main-button {
+            width: 280px;
+            height: 280px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #2a2a4a, #1a1a2e);
+            border: 8px solid #4a4a8a;
+            box-shadow: 
+                0 0 30px rgba(138, 43, 226, 0.4),
+                inset 0 0 20px rgba(138, 43, 226, 0.2);
+            cursor: pointer;
+            transition: all 0.1s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .main-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #6a6aaa, #4a4a8a);
+            opacity: 0.3;
+        }
+
+        .main-button:active {
+            transform: scale(0.95);
+            box-shadow: 
+                0 0 15px rgba(138, 43, 226, 0.6),
+                inset 0 0 30px rgba(138, 43, 226, 0.3);
+        }
+
+        /* Анимация всплывающих цифр */
+        .float-number {
+            position: absolute;
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            text-shadow: 0 0 10px rgba(138, 43, 226, 0.8);
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-100px) scale(1.5); }
+        }
+
+        /* Энергия */
+        .energy-container {
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 20px;
+        }
+
+        .energy-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .energy-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #8a2be2);
+            border-radius: 6px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(138, 43, 226, 0.5);
+        }
+
+        /* Магазин */
+        .shop {
+            width: 100%;
+            max-width: 320px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding-bottom: 20px;
+        }
+
+        .shop-item {
+            background: linear-gradient(145deg, #2a2a4a, #1a1a2e);
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            border-radius: 12px;
+            padding: 15px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .shop-item:active {
+            transform: scale(0.95);
+        }
+
+        .shop-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .shop-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .shop-name {
+            font-size: 12px;
+            margin-bottom: 5px;
+            opacity: 0.8;
+        }
+
+        .shop-cost {
+            font-size: 14px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .shop-level {
+            font-size: 10px;
+            opacity: 0.6;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Баланс -->
+    <div class="balance-container">
+        <div class="balance" id="balance">0</div>
+        <div class="balance-label">монет</div>
+    </div>
+
+    <!-- Кнопка -->
+    <div class="clicker-area">
+        <div class="main-button" id="clickButton"></div>
+    </div>
+
+    <!-- Энергия -->
+    <div class="energy-container">
+        <div class="energy-info">
+            <span>⚡ Энергия</span>
+            <span id="energyText">500 / 500</span>
+        </div>
+        <div class="energy-bar">
+            <div class="energy-fill" id="energyFill"></div>
+        </div>
+    </div>
+
+    <!-- Магазин -->
+    <div class="shop">
+        <div class="shop-item" id="boostClick" onclick="buyUpgrade('click')">
+            <div class="shop-icon">⚡</div>
+            <div class="shop-name">Сила</div>
+            <div class="shop-cost" id="costClick">100</div>
+            <div class="shop-level">Ур. <span id="levelClick">1</span></div>
+        </div>
+        <div class="shop-item" id="boostAuto" onclick="buyUpgrade('auto')">
+            <div class="shop-icon">🔄</div>
+            <div class="shop-name">Авто</div>
+            <div class="shop-cost" id="costAuto">500</div>
+            <div class="shop-level">Ур. <span id="levelAuto">0</span></div>
+        </div>
+        <div class="shop-item" id="boostEnergy" onclick="buyUpgrade('energy')">
+            <div class="shop-icon">🔋</div>
+            <div class="shop-name">Энергия</div>
+            <div class="shop-cost" id="costEnergy">200</div>
+            <div class="shop-level">Ур. <span id="levelEnergy">1</span></div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Развернуть на весь экран
+
+        // Игровые данные
+        let gameData = {
+            balance: 0,
+            energy: 500,
+            maxEnergy: 500,
+            clickPower: 1,
+            autoClick: 0,
+            upgrades: {
+                click: { level: 1, cost: 100, power: 1 },
+                auto: { level: 0, cost: 500, power: 5 },
+                energy: { level: 1, cost: 200, power: 500 }
+            }
+        };
+
+        // Загрузка сохранения
+        function loadGame() {
+            const saved = localStorage.getItem('clickerSave');
+            if (saved) {
+                gameData = { ...gameData, ...JSON.parse(saved) };
+            }
+            updateUI();
+        }
+
+        // Сохранение игры
+        function saveGame() {
+            localStorage.setItem('clickerSave', JSON.stringify(gameData));
+        }
+
+        // Обновление интерфейса
+        function updateUI() {
+            document.getElementById('balance').textContent = gameData.balance.toLocaleString();
+            document.getElementById('energyText').textContent = `${Math.floor(gameData.energy)} / ${gameData.maxEnergy}`;
+            document.getElementById('energyFill').style.width = `${(gameData.energy / gameData.maxEnergy) * 100}%`;
+
+            // Обновление магазина
+            document.getElementById('costClick').textContent = gameData.upgrades.click.cost;
+            document.getElementById('levelClick').textContent = gameData.upgrades.click.level;
+            document.getElementById('costAuto').textContent = gameData.upgrades.auto.cost;
+            document.getElementById('levelAuto').textContent = gameData.upgrades.auto.level;
+            document.getElementById('costEnergy').textContent = gameData.upgrades.energy.cost;
+            document.getElementById('levelEnergy').textContent = gameData.upgrades.energy.level;
+
+            // Проверка доступности улучшений
+            checkShopAvailability();
+        }
+
+        // Проверка доступности кнопок магазина
+        function checkShopAvailability() {
+            ['click', 'auto', 'energy'].forEach(type => {
+                const item = document.getElementById(`boost${type.charAt(0).toUpperCase() + type.slice(1)}`);
+                if (gameData.balance >= gameData.upgrades[type].cost) {
+                    item.classList.remove('disabled');
+                } else {
+                    item.classList.add('disabled');
+                }
+            });
+        }
+
+        // Клик по главной кнопке
+        document.getElementById('clickButton').addEventListener('click', function(e) {
+            if (gameData.energy >= gameData.clickPower) {
+                // Получаем координаты клика
+                const rect = this.getBoundingClientRect();
+                const x = e.clientX || (rect.left + rect.width / 2);
+                const y = e.clientY || (rect.top + rect.height / 2);
+
+                // Добавляем монеты
+                gameData.balance += gameData.clickPower;
+                gameData.energy -= gameData.clickPower;
+
+                // Визуальный эффект
+                showFloatNumber(x, y, `+${gameData.clickPower}`);
+
+                // Вибрация (Haptic Feedback)
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('medium');
+                }
+
+                updateUI();
+                saveGame();
+            }
+        });
+
+        // Всплывающие цифры
+        function showFloatNumber(x, y, text) {
+            const floatEl = document.createElement('div');
+            floatEl.className = 'float-number';
+            floatEl.textContent = text;
+            floatEl.style.left = `${x}px`;
+            floatEl.style.top = `${y}px`;
+            document.body.appendChild(floatEl);
+
+            setTimeout(() => floatEl.remove(), 1000);
+        }
+
+        // Покупка улучшений
+        function buyUpgrade(type) {
+            const upgrade = gameData.upgrades[type];
+            if (gameData.balance >= upgrade.cost) {
+                gameData.balance -= upgrade.cost;
+                upgrade.level++;
+                upgrade.cost = Math.floor(upgrade.cost * 1.5);
+
+                if (type === 'click') {
+                    gameData.clickPower++;
+                } else if (type === 'auto') {
+                    gameData.autoClick += upgrade.power;
+                } else if (type === 'energy') {
+                    gameData.maxEnergy += upgrade.power;
+                    gameData.energy = gameData.maxEnergy;
+                }
+
+                // Вибрация при покупке
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+
+                updateUI();
+                saveGame();
+            }
+        }
+
+        // Авто-клик (пассивный доход)
+        setInterval(() => {
+            if (gameData.autoClick > 0) {
+                gameData.balance += gameData.autoClick;
+                updateUI();
+                saveGame();
+            }
+        }, 1000);
+
+        // Восстановление энергии
+        setInterval(() => {
+            if (gameData.energy < gameData.maxEnergy) {
+                gameData.energy = Math.min(gameData.energy + 1, gameData.maxEnergy);
+                updateUI();
+                saveGame();
+            }
+        }, 1000);
+
+        // Запуск игры
+        loadGame();
+    </script>
+</body>
+</html>
