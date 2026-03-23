@@ -78,14 +78,14 @@
         <div class="stat-box"><div class="stat-value" id="totalClicks">0</div><div class="stat-label">кликов</div></div>
     </div>
     <div class="clicker-area"><div class="main-button" id="clickButton"></div></div>
-    <div class="energy-container"><div class="energy-info"><span>⚡ Энергия</span><span id="energyText">500 / 500</span></div><div class="energy-bar"><div class="energy-fill" id="energyFill"></div></div></div>
+    <div class="energy-container"><div class="energy-info"><span>⚡ Энергия</span><span id="energyText">1000 / 1000</span></div><div class="energy-bar"><div class="energy-fill" id="energyFill"></div></div></div>
     <div class="shop">
-        <div class="shop-item" id="boostClick" onclick="buyUpgrade('click')"><div class="shop-icon">⚡</div><div class="shop-name">Сила клика</div><div class="shop-cost" id="costClick">100</div><div class="shop-level">Ур. <span id="levelClick">1</span></div><div class="shop-bonus">+1 за клик</div></div>
-        <div class="shop-item" id="boostAuto" onclick="buyUpgrade('auto')"><div class="shop-icon">🤖</div><div class="shop-name">Авто-клик</div><div class="shop-cost" id="costAuto">500</div><div class="shop-level" id="autoText">Ур. 0</div><div class="shop-bonus">+5/сек</div></div>
-        <div class="shop-item" id="boostEnergy" onclick="buyUpgrade('energy')"><div class="shop-icon">🔋</div><div class="shop-name">Энергия</div><div class="shop-cost" id="costEnergy">200</div><div class="shop-level">Ур. <span id="levelEnergy">1</span></div><div class="shop-bonus">+500 макс</div></div>
-        <div class="shop-item" id="boostMulti" onclick="buyUpgrade('multi')" style="display:none;"><div class="shop-icon">💎</div><div class="shop-name">Мульти x2</div><div class="shop-cost" id="costMulti">2000</div><div class="shop-level">Ур. <span id="levelMulti">0</span></div><div class="shop-bonus">x2 всё</div></div>
-        <div class="shop-item" id="boostRegen" onclick="buyUpgrade('regen')"><div class="shop-icon">⚡</div><div class="shop-name">Реген</div><div class="shop-cost" id="costRegen">1000</div><div class="shop-level">Ур. <span id="levelRegen">1</span></div><div class="shop-bonus">+2/сек</div></div>
-        <div class="shop-item" id="boostJackpot" onclick="buyUpgrade('jackpot')"><div class="shop-icon">🎰</div><div class="shop-name">Джекпот</div><div class="shop-cost" id="costJackpot">5000</div><div class="shop-level">Ур. <span id="levelJackpot">0</span></div><div class="shop-bonus">Шанс x10</div></div>
+        <div class="shop-item" id="boostClick" onclick="buyUpgrade('click')"><div class="shop-icon">⚡</div><div class="shop-name">Сила клика</div><div class="shop-cost" id="costClick">50</div><div class="shop-level">Ур. <span id="levelClick">1</span></div><div class="shop-bonus">+1 за клик</div></div>
+        <div class="shop-item" id="boostAuto" onclick="buyUpgrade('auto')"><div class="shop-icon">🤖</div><div class="shop-name">Авто-клик</div><div class="shop-cost" id="costAuto">200</div><div class="shop-level" id="autoText">Ур. 0</div><div class="shop-bonus">+2/сек</div></div>
+        <div class="shop-item" id="boostEnergy" onclick="buyUpgrade('energy')"><div class="shop-icon">🔋</div><div class="shop-name">Энергия</div><div class="shop-cost" id="costEnergy">100</div><div class="shop-level">Ур. <span id="levelEnergy">1</span></div><div class="shop-bonus">+500 макс</div></div>
+        <div class="shop-item" id="boostMulti" onclick="buyUpgrade('multi')" style="display:none;"><div class="shop-icon">💎</div><div class="shop-name">Мульти x2</div><div class="shop-cost" id="costMulti">1000</div><div class="shop-level">Ур. <span id="levelMulti">0</span></div><div class="shop-bonus">x2 всё</div></div>
+        <div class="shop-item" id="boostRegen" onclick="buyUpgrade('regen')"><div class="shop-icon">⚡</div><div class="shop-name">Реген</div><div class="shop-cost" id="costRegen">300</div><div class="shop-level">Ур. <span id="levelRegen">1</span></div><div class="shop-bonus">+1/сек</div></div>
+        <div class="shop-item" id="boostJackpot" onclick="buyUpgrade('jackpot')"><div class="shop-icon">🎰</div><div class="shop-name">Джекпот</div><div class="shop-cost" id="costJackpot">2000</div><div class="shop-level">Ур. <span id="levelJackpot">0</span></div><div class="shop-bonus">5% шанс x10</div></div>
     </div>
 
     <script>
@@ -106,16 +106,26 @@
         tg.expand();
         const userId = tg.initDataUnsafe?.user?.id || 'guest';
 
+        // 🔥 СБАЛАНСИРОВАННЫЕ СТАРТОВЫЕ ЗНАЧЕНИЯ
         let gameData = {
-            balance: 0, energy: 500, maxEnergy: 500, clickPower: 1, autoClick: 0, totalClicks: 0,
-            energyRegen: 1, multiplier: 1, jackpotLevel: 0, combo: 0, lastComboReset: Date.now(),
+            balance: 0,
+            energy: 1000,
+            maxEnergy: 1000,
+            clickPower: 1,
+            autoClick: 0,
+            totalClicks: 0,
+            energyRegen: 1,
+            multiplier: 1,
+            jackpotLevel: 0,
+            combo: 0,
+            lastComboReset: Date.now(),
             upgrades: {
-                click: { level: 1, cost: 100, power: 1 },
-                auto: { level: 0, cost: 500, power: 5, purchased: false },
-                energy: { level: 1, cost: 200, power: 500 },
-                multi: { level: 0, cost: 2000, power: 2 },
-                regen: { level: 1, cost: 1000, power: 2 },
-                jackpot: { level: 0, cost: 5000, power: 0.05 }
+                click: { level: 1, cost: 50, power: 1 },
+                auto: { level: 0, cost: 200, power: 2, purchased: false },
+                energy: { level: 1, cost: 100, power: 500 },
+                multi: { level: 0, cost: 1000, power: 2 },
+                regen: { level: 1, cost: 300, power: 1 },
+                jackpot: { level: 0, cost: 2000, power: 0.05 }
             }
         };
 
@@ -124,48 +134,87 @@
             userRef.once('value').then((snapshot) => {
                 const data = snapshot.val();
                 if (data) {
-                    gameData = { ...gameData, ...data, upgrades: { ...gameData.upgrades, ...(data.upgrades || {}) } };
-                    ['click','auto','energy','multi','regen','jackpot'].forEach(type => {
-                        if (!gameData.upgrades[type]) {
-                            gameData.upgrades[type] = {
-                                level: ['click','energy','regen'].includes(type) ? 1 : 0,
-                                cost: {click:100,auto:500,energy:200,multi:2000,regen:1000,jackpot:5000}[type],
-                                power: {click:1,auto:5,energy:500,multi:2,regen:2,jackpot:0.05}[type],
-                                purchased: type === 'auto' ? false : undefined
-                            };
-                        }
-                    });
+                    // 🔥 БЕЗОПАСНОЕ СЛИЯНИЕ С ПРОВЕРКОЙ НА ОТРИЦАТЕЛЬНЫЕ ЗНАЧЕНИЯ
+                    gameData.balance = Math.max(0, data.balance || 0);
+                    gameData.energy = Math.max(0, data.energy || 1000);
+                    gameData.maxEnergy = Math.max(1000, data.maxEnergy || 1000);
+                    gameData.clickPower = Math.max(1, data.clickPower || 1);
+                    gameData.autoClick = Math.max(0, data.autoClick || 0);
+                    gameData.totalClicks = Math.max(0, data.totalClicks || 0);
+                    gameData.energyRegen = Math.max(1, data.energyRegen || 1);
+                    gameData.multiplier = Math.max(1, data.multiplier || 1);
+                    gameData.jackpotLevel = Math.max(0, data.jackpotLevel || 0);
+                    gameData.combo = 0;
+                    gameData.lastComboReset = Date.now();
+                    
+                    // 🔥 СЛИЯНИЕ УЛУЧШЕНИЙ
+                    if (data.upgrades) {
+                        Object.keys(gameData.upgrades).forEach(key => {
+                            if (data.upgrades[key]) {
+                                gameData.upgrades[key] = {
+                                    ...gameData.upgrades[key],
+                                    ...data.upgrades[key]
+                                };
+                            }
+                        });
+                    }
+                    
                     if (gameData.upgrades.auto?.purchased) {
                         document.getElementById('boostAuto')?.classList.add('purchased');
                         document.getElementById('autoText').textContent = 'КУПЛЕНО';
                         showMulti();
                     }
-                } else {
-                    saveToFirebase();
                 }
                 updateUI();
                 document.getElementById('loading').style.display = 'none';
             }).catch((err) => {
                 console.error('Firebase error:', err);
-                document.getElementById('loading').innerHTML = '<div style="color:red;padding:20px;text-align:center">❌ Ошибка!<br>Проверь консоль (F12)<br><button onclick="location.reload()" style="margin-top:10px;padding:10px 20px;cursor:pointer">Обновить</button></div>';
+                document.getElementById('loading').innerHTML = '<div style="color:red;padding:20px;text-align:center">❌ Ошибка!<br><button onclick="location.reload()" style="margin-top:10px;padding:10px 20px;cursor:pointer;background:#8a2be2;color:white;border:none;border-radius:8px">Обновить</button></div>';
             });
 
             userRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
-                    gameData = { ...gameData, ...data, upgrades: { ...gameData.upgrades, ...(data.upgrades || {}) } };
+                    gameData.balance = Math.max(0, data.balance || 0);
+                    gameData.energy = Math.max(0, data.energy || 1000);
+                    gameData.maxEnergy = Math.max(1000, data.maxEnergy || 1000);
+                    gameData.clickPower = Math.max(1, data.clickPower || 1);
+                    gameData.autoClick = Math.max(0, data.autoClick || 0);
+                    gameData.totalClicks = Math.max(0, data.totalClicks || 0);
+                    gameData.energyRegen = Math.max(1, data.energyRegen || 1);
+                    gameData.multiplier = Math.max(1, data.multiplier || 1);
+                    if (data.upgrades) {
+                        Object.keys(gameData.upgrades).forEach(key => {
+                            if (data.upgrades[key]) {
+                                gameData.upgrades[key] = { ...gameData.upgrades[key], ...data.upgrades[key] };
+                            }
+                        });
+                    }
                     updateUI();
                 }
             });
         }
 
         function saveToFirebase() {
-            db.ref('users/' + userId).set(gameData).catch(console.error);
+            db.ref('users/' + userId).set({
+                balance: Math.max(0, gameData.balance),
+                energy: Math.max(0, gameData.energy),
+                maxEnergy: gameData.maxEnergy,
+                clickPower: gameData.clickPower,
+                autoClick: gameData.autoClick,
+                totalClicks: gameData.totalClicks,
+                energyRegen: gameData.energyRegen,
+                multiplier: gameData.multiplier,
+                jackpotLevel: gameData.jackpotLevel,
+                upgrades: gameData.upgrades
+            }).catch(console.error);
         }
 
         function updateBalance(amount) {
             const final = Math.floor(amount * gameData.multiplier);
-            db.ref('users/' + userId + '/balance').transaction(cur => (cur || 0) + final);
+            const newBalance = gameData.balance + final;
+            gameData.balance = Math.max(0, newBalance);
+            db.ref('users/' + userId + '/balance').set(gameData.balance);
             return final;
         }
 
@@ -176,11 +225,14 @@
             gameData.combo = Math.min(gameData.combo + 1, 50);
             const mult = 1 + (gameData.combo * 0.1);
             document.getElementById('comboValue').textContent = mult.toFixed(1);
-            document.getElementById('comboFill').style.width = (gameData.combo * 2) + '%';
+            document.getElementById('comboFill').style.width = Math.min((gameData.combo * 2), 100) + '%';
             if (gameData.combo > 5) {
                 document.getElementById('comboText').classList.add('active');
                 document.getElementById('clickButton').classList.add('combo');
-                setTimeout(() => document.getElementById('clickButton').classList.remove('combo'), 300);
+                setTimeout(() => {
+                    document.getElementById('clickButton').classList.remove('combo');
+                    document.getElementById('comboText').classList.remove('active');
+                }, 300);
             }
         }
 
@@ -193,11 +245,15 @@
                 showNotification('❌ Недостаточно монет!');
                 return;
             }
-            updateBalance(-upg.cost);
-            upg.level++;
-            upg.cost = Math.floor(upg.cost * 1.5);
             
-            if (type === 'click') { gameData.clickPower += upg.power; showNotification(`⚡ +${upg.power} к клику!`); }
+            gameData.balance -= upg.cost;
+            upg.level++;
+            upg.cost = Math.floor(upg.cost * 1.3);
+            
+            if (type === 'click') { 
+                gameData.clickPower += upg.power; 
+                showNotification(`⚡ +${upg.power} к клику!`); 
+            }
             else if (type === 'auto') {
                 if (!upg.purchased) {
                     gameData.autoClick += upg.power;
@@ -206,12 +262,28 @@
                     document.getElementById('autoText').textContent = 'КУПЛЕНО';
                     showNotification('🤖 Авто-клик ВКЛ!');
                     showMulti();
+                } else {
+                    gameData.autoClick += upg.power;
+                    showNotification(`🤖 +${upg.power}/сек!`);
                 }
             }
-            else if (type === 'energy') { gameData.maxEnergy += upg.power; gameData.energy = gameData.maxEnergy; showNotification(`🔋 +${upg.power} энергии!`); }
-            else if (type === 'multi') { gameData.multiplier += 1; showNotification(`💎 МУЛЬТИ x${gameData.multiplier}!`); }
-            else if (type === 'regen') { gameData.energyRegen += upg.power; showNotification(`⚡ Реген +${upg.power}/сек!`); }
-            else if (type === 'jackpot') { gameData.jackpotLevel++; showNotification('🎰 Джекпот улучшен!'); }
+            else if (type === 'energy') { 
+                gameData.maxEnergy += upg.power; 
+                gameData.energy = gameData.maxEnergy; 
+                showNotification(`🔋 +${upg.power} энергии!`); 
+            }
+            else if (type === 'multi') { 
+                gameData.multiplier += 1; 
+                showNotification(`💎 МУЛЬТИ x${gameData.multiplier}!`); 
+            }
+            else if (type === 'regen') { 
+                gameData.energyRegen += upg.power; 
+                showNotification(`⚡ Реген +${upg.power}/сек!`); 
+            }
+            else if (type === 'jackpot') { 
+                gameData.jackpotLevel++; 
+                showNotification('🎰 Джекпот улучшен!'); 
+            }
             
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             updateUI();
@@ -226,7 +298,7 @@
         }
 
         function updateUI() {
-            document.getElementById('balance').textContent = gameData.balance.toLocaleString();
+            document.getElementById('balance').textContent = Math.floor(gameData.balance).toLocaleString();
             document.getElementById('energyText').textContent = `${Math.floor(gameData.energy)} / ${gameData.maxEnergy}`;
             document.getElementById('energyFill').style.width = `${(gameData.energy / gameData.maxEnergy) * 100}%`;
             document.getElementById('perClick').textContent = (gameData.clickPower * gameData.multiplier).toLocaleString();
@@ -255,19 +327,22 @@
         }
 
         document.getElementById('clickButton').addEventListener('click', function(e) {
-            if (gameData.energy >= gameData.clickPower) {
-                // 🔥 ИСПРАВЛЕНИЕ: тратим энергию и сохраняем отдельно
-                const newEnergy = gameData.energy - gameData.clickPower;
-                gameData.energy = newEnergy;
-                db.ref('users/' + userId + '/energy').set(newEnergy);
+            const energyCost = Math.min(gameData.clickPower, gameData.energy);
+            if (energyCost > 0) {
+                // 🔥 ТРАТИМ ЭНЕРГИЮ
+                gameData.energy -= energyCost;
+                db.ref('users/' + userId + '/energy').set(Math.max(0, gameData.energy));
                 
                 updateCombo();
                 const comboMult = 1 + (gameData.combo * 0.1);
                 let amount = gameData.clickPower * comboMult;
+                
+                // JACKPOT
                 if (gameData.jackpotLevel > 0 && Math.random() < gameData.jackpotLevel * 0.05) {
                     amount *= 10;
                     showNotification('🎰 ДЖЕКПОТ x10!');
                 }
+                
                 const earned = updateBalance(amount);
                 gameData.totalClicks++;
                 db.ref('users/' + userId + '/totalClicks').set(gameData.totalClicks);
@@ -295,8 +370,22 @@
             setTimeout(() => el.remove(), 1000);
         }
 
-        setInterval(() => { if (gameData.autoClick > 0) { updateBalance(gameData.autoClick); updateUI(); } }, 1000);
-        setInterval(() => { if (gameData.energy < gameData.maxEnergy) { gameData.energy = Math.min(gameData.energy + gameData.energyRegen, gameData.maxEnergy); updateUI(); } }, 1000);
+        // АВТО-КЛИК
+        setInterval(() => { 
+            if (gameData.autoClick > 0) { 
+                const earned = updateBalance(gameData.autoClick);
+                updateUI();
+            } 
+        }, 1000);
+        
+        // РЕГЕНЕРАЦИЯ ЭНЕРГИИ
+        setInterval(() => { 
+            if (gameData.energy < gameData.maxEnergy) { 
+                gameData.energy = Math.min(gameData.energy + gameData.energyRegen, gameData.maxEnergy);
+                db.ref('users/' + userId + '/energy').set(gameData.energy);
+                updateUI();
+            } 
+        }, 1000);
 
         loadFromFirebase();
     </script>
