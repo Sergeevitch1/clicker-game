@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>🔥 Crypto Clicker PRO</title>
-    <!-- ✅ ИСПРАВЛЕНО: убраны пробелы в src -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -90,7 +89,6 @@
     </div>
 
     <script>
-        // ===== FIREBASE CONFIG =====
         const firebaseConfig = {
             apiKey: "AIzaSyAhsAZIQPeudjXsO275v9wf1BuVM0x8B1g",
             authDomain: "clicker-game-22323.firebaseapp.com",
@@ -108,10 +106,9 @@
         tg.expand();
         const userId = tg.initDataUnsafe?.user?.id || 'guest';
 
-        // ===== GAME DATA =====
         let gameData = {
             balance: 0, energy: 500, maxEnergy: 500, clickPower: 1, autoClick: 0, totalClicks: 0,
-            energyRegen: 1, multiplier: 1, jackpotLevel: 0, combo: 0, comboTime: 0, lastComboReset: Date.now(),
+            energyRegen: 1, multiplier: 1, jackpotLevel: 0, combo: 0, lastComboReset: Date.now(),
             upgrades: {
                 click: { level: 1, cost: 100, power: 1 },
                 auto: { level: 0, cost: 500, power: 5, purchased: false },
@@ -122,19 +119,12 @@
             }
         };
 
-        // ===== FIREBASE SYNC (с защитой от ошибок) =====
         function loadFromFirebase() {
             const userRef = db.ref('users/' + userId);
             userRef.once('value').then((snapshot) => {
                 const data = snapshot.val();
                 if (data) {
-                    // 🔥 Безопасное слияние данных
-                    gameData = {
-                        ...gameData,
-                        ...data,
-                        upgrades: { ...gameData.upgrades, ...(data.upgrades || {}) }
-                    };
-                    // 🔥 Создаём недостающие апгрейды
+                    gameData = { ...gameData, ...data, upgrades: { ...gameData.upgrades, ...(data.upgrades || {}) } };
                     ['click','auto','energy','multi','regen','jackpot'].forEach(type => {
                         if (!gameData.upgrades[type]) {
                             gameData.upgrades[type] = {
@@ -157,7 +147,7 @@
                 document.getElementById('loading').style.display = 'none';
             }).catch((err) => {
                 console.error('Firebase error:', err);
-                document.getElementById('loading').innerHTML = '<div style="color:red;padding:20px;text-align:center">❌ Ошибка!<br>Проверь консоль (F12)<br><button onclick="location.reload()" style="margin-top:10px;padding:10px 20px">Обновить</button></div>';
+                document.getElementById('loading').innerHTML = '<div style="color:red;padding:20px;text-align:center">❌ Ошибка!<br>Проверь консоль (F12)<br><button onclick="location.reload()" style="margin-top:10px;padding:10px 20px;cursor:pointer">Обновить</button></div>';
             });
 
             userRef.on('value', (snapshot) => {
@@ -266,7 +256,11 @@
 
         document.getElementById('clickButton').addEventListener('click', function(e) {
             if (gameData.energy >= gameData.clickPower) {
-                gameData.energy -= gameData.clickPower;
+                // 🔥 ИСПРАВЛЕНИЕ: тратим энергию и сохраняем отдельно
+                const newEnergy = gameData.energy - gameData.clickPower;
+                gameData.energy = newEnergy;
+                db.ref('users/' + userId + '/energy').set(newEnergy);
+                
                 updateCombo();
                 const comboMult = 1 + (gameData.combo * 0.1);
                 let amount = gameData.clickPower * comboMult;
@@ -276,13 +270,15 @@
                 }
                 const earned = updateBalance(amount);
                 gameData.totalClicks++;
+                db.ref('users/' + userId + '/totalClicks').set(gameData.totalClicks);
+                
                 const rect = this.getBoundingClientRect();
                 const x = e.clientX || (rect.left + rect.width/2);
                 const y = e.clientY || (rect.top + rect.height/2);
                 showFloat(x, y, `+${earned}`);
+                
                 if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
                 updateUI();
-                saveToFirebase();
             } else {
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
                 showNotification('⚡ Нет энергии!');
