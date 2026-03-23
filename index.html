@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>💰 Crypto Clicker PRO</title>
+    <title>💰 Crypto Clicker MEGA</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -19,114 +19,133 @@
     <!-- Notification -->
     <div class="notification" id="notification"></div>
 
-    <!-- Combo -->
-    <div class="combo-container">
-        <div class="combo-text" id="comboText">🔥 COMBO x<span id="comboValue">1.0</span></div>
-        <div class="combo-bar">
-            <div class="combo-fill" id="comboFill"></div>
-        </div>
-        <div class="combo-timer" id="comboTimer"></div>
+    <!-- Jackpot Celebration -->
+    <div class="jackpot-celebration" id="jackpotCelebration">
+        <div class="jackpot-text">🎰 ДЖЕКПОТ! 🎰</div>
+        <div class="jackpot-amount" id="jackpotAmount">x10</div>
     </div>
 
-    <!-- Balance -->
-    <div class="balance-container">
-        <div class="balance" id="balance">$0</div>
-        <div class="balance-label">💵 БАЛАНС</div>
-    </div>
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Side - Game -->
+        <div class="game-side">
+            <!-- Balance -->
+            <div class="balance-container">
+                <div class="balance" id="balance">$0</div>
+                <div class="balance-label">💵 БАЛАНС</div>
+                <div class="balance-change" id="balanceChange"></div>
+            </div>
 
-    <!-- Stats -->
-    <div class="stats">
-        <div class="stat-box">
-            <div class="stat-value" id="perClick">$1</div>
-            <div class="stat-label">за клик</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-value" id="perSecond">$0</div>
-            <div class="stat-label">в секунду</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-value" id="totalEarned">$0</div>
-            <div class="stat-label">всего</div>
-        </div>
-    </div>
+            <!-- Combo -->
+            <div class="combo-container">
+                <div class="combo-text" id="comboText">🔥 COMBO x<span id="comboValue">1.0</span></div>
+                <div class="combo-bar">
+                    <div class="combo-fill" id="comboFill"></div>
+                </div>
+                <div class="combo-timer" id="comboTimer"></div>
+            </div>
 
-    <!-- Active Effects -->
-    <div class="effects-container" id="effectsContainer"></div>
+            <!-- Stats -->
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="perClick">$1</div>
+                    <div class="stat-label">за клик</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="perSecond">$0</div>
+                    <div class="stat-label">в секунду</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="totalEarned">$0</div>
+                    <div class="stat-label">всего</div>
+                </div>
+            </div>
 
-    <!-- Clicker Button -->
-    <div class="clicker-area">
-        <div class="main-button" id="clickButton"></div>
-    </div>
+            <!-- Active Effects -->
+            <div class="effects-container" id="effectsContainer"></div>
 
-    <!-- Energy -->
-    <div class="energy-container">
-        <div class="energy-info">
-            <span>⚡ Энергия</span>
-            <span id="energyText">100 / 100</span>
-        </div>
-        <div class="energy-bar">
-            <div class="energy-fill" id="energyFill"></div>
-        </div>
-        <div class="energy-regen" id="energyRegen">+1/сек</div>
-    </div>
+            <!-- Clicker Button -->
+            <div class="clicker-area">
+                <div class="main-button" id="clickButton">
+                    <div class="button-glow"></div>
+                </div>
+            </div>
 
-    <!-- Shop -->
-    <div class="shop">
-        <!-- Click Power -->
-        <div class="shop-item" id="boostClick" onclick="buyUpgrade('click')">
-            <div class="shop-icon">⚡</div>
-            <div class="shop-name">Сила клика</div>
-            <div class="shop-cost" id="costClick">$100</div>
-            <div class="shop-level">Ур. <span id="levelClick">1</span></div>
-            <div class="shop-bonus" id="clickBonus">+1$ за клик</div>
-            <div class="cooldown-bar" id="clickCooldown"></div>
-        </div>
-
-        <!-- Auto Click (1 min) -->
-        <div class="shop-item" id="boostAuto" onclick="buyUpgrade('auto')">
-            <div class="shop-icon">🤖</div>
-            <div class="shop-name">Авто-клик</div>
-            <div class="shop-cost" id="costAuto">$500</div>
-            <div class="shop-level" id="autoText">1 мин</div>
-            <div class="shop-bonus" id="autoBonus">+5$/сек</div>
-            <div class="timer-bar" id="autoTimer"></div>
+            <!-- Energy -->
+            <div class="energy-container">
+                <div class="energy-info">
+                    <span>⚡ Энергия</span>
+                    <span id="energyText">100 / 100</span>
+                </div>
+                <div class="energy-bar">
+                    <div class="energy-fill" id="energyFill"></div>
+                </div>
+                <div class="energy-regen" id="energyRegen">+1/сек</div>
+            </div>
         </div>
 
-        <!-- Energy Max -->
-        <div class="shop-item" id="boostEnergy" onclick="buyUpgrade('energy')">
-            <div class="shop-icon">🔋</div>
-            <div class="shop-name">Энергия</div>
-            <div class="shop-cost" id="costEnergy">$200</div>
-            <div class="shop-level">Ур. <span id="levelEnergy">1</span></div>
-            <div class="shop-bonus" id="energyBonus">+100 макс</div>
-        </div>
+        <!-- Right Side - Shop -->
+        <div class="shop-side">
+            <div class="shop-title">🛒 МАГАЗИН</div>
+            <div class="shop">
+                <!-- Click Power -->
+                <div class="shop-item" id="boostClick" onclick="buyUpgrade('click')">
+                    <div class="shop-icon">⚡</div>
+                    <div class="shop-name">Сила клика</div>
+                    <div class="shop-cost" id="costClick">$100</div>
+                    <div class="shop-level">Ур. <span id="levelClick">1</span></div>
+                    <div class="shop-bonus" id="clickBonus">+5$ за клик</div>
+                    <div class="cooldown-text" id="clickCooldownText"></div>
+                </div>
 
-        <!-- Multiplier x2 (5 min) -->
-        <div class="shop-item" id="boostMulti" onclick="buyUpgrade('multi')">
-            <div class="shop-icon">💎</div>
-            <div class="shop-name">Мульти x2</div>
-            <div class="shop-cost" id="costMulti">$5000</div>
-            <div class="shop-level" id="multiText">5 мин</div>
-            <div class="shop-bonus">x2 всё</div>
-            <div class="timer-bar" id="multiTimer"></div>
-        </div>
+                <!-- Auto Click -->
+                <div class="shop-item" id="boostAuto" onclick="buyUpgrade('auto')">
+                    <div class="shop-icon">🤖</div>
+                    <div class="shop-name">Авто-клик</div>
+                    <div class="shop-cost" id="costAuto">$500</div>
+                    <div class="shop-timer" id="autoTimer">1 мин</div>
+                    <div class="shop-bonus" id="autoBonus">+10$/сек</div>
+                    <div class="progress-bar" id="autoProgress"></div>
+                </div>
 
-        <!-- Regen -->
-        <div class="shop-item" id="boostRegen" onclick="buyUpgrade('regen')">
-            <div class="shop-icon">⚡</div>
-            <div class="shop-name">Реген</div>
-            <div class="shop-cost" id="costRegen">$1000</div>
-            <div class="shop-level">Ур. <span id="levelRegen">1</span></div>
-            <div class="shop-bonus" id="regenBonus">+1/сек</div>
-        </div>
+                <!-- Energy -->
+                <div class="shop-item" id="boostEnergy" onclick="buyUpgrade('energy')">
+                    <div class="shop-icon">🔋</div>
+                    <div class="shop-name">Энергия</div>
+                    <div class="shop-cost" id="costEnergy">$200</div>
+                    <div class="shop-level">Ур. <span id="levelEnergy">1</span></div>
+                    <div class="shop-bonus">+100 энергии</div>
+                </div>
 
-        <!-- Jackpot -->
-        <div class="shop-item" id="boostJackpot" onclick="buyUpgrade('jackpot')">
-            <div class="shop-icon">🎰</div>
-            <div class="shop-name">Джекпот</div>
-            <div class="shop-cost" id="costJackpot">$10000</div>
-            <div class="shop-level">Ур. <span id="levelJackpot">0</span></div>
-            <div class="shop-bonus" id="jackpotBonus">5% шанс x10</div>
+                <!-- Multiplier -->
+                <div class="shop-item" id="boostMulti" onclick="buyUpgrade('multi')">
+                    <div class="shop-icon">💎</div>
+                    <div class="shop-name">Мульти x2</div>
+                    <div class="shop-cost" id="costMulti">$5000</div>
+                    <div class="shop-timer" id="multiTimer">5 мин</div>
+                    <div class="shop-bonus">x2 всё</div>
+                    <div class="progress-bar" id="multiProgress"></div>
+                </div>
+
+                <!-- Regen -->
+                <div class="shop-item" id="boostRegen" onclick="buyUpgrade('regen')">
+                    <div class="shop-icon">⚡</div>
+                    <div class="shop-name">Реген</div>
+                    <div class="shop-cost" id="costRegen">$1000</div>
+                    <div class="shop-level">Ур. <span id="levelRegen">1</span></div>
+                    <div class="shop-bonus" id="regenBonus">+2/сек</div>
+                </div>
+
+                <!-- Jackpot -->
+                <div class="shop-item jackpot-item" id="boostJackpot" onclick="buyUpgrade('jackpot')">
+                    <div class="shop-icon">🎰</div>
+                    <div class="shop-name">Джекпот</div>
+                    <div class="shop-cost" id="costJackpot">$10000</div>
+                    <div class="shop-level">Ур. <span id="levelJackpot">0</span></div>
+                    <div class="shop-bonus" id="jackpotBonus">5% шанс x10</div>
+                    <div class="jackpot-glow"></div>
+                </div>
+            </div>
         </div>
     </div>
 
